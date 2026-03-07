@@ -10,9 +10,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime, timedelta
-
-from models import engine, Reading, Sensor
-
+from auth import verify_password, get_password_hash, create_access_token
+from models import engine, Reading, Sensor, User
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+import jwt
+from auth import SECRET_KEY, ALGORITHM
 # ---------------------------------------------------------------------------
 # Database session factory
 # ---------------------------------------------------------------------------
@@ -30,7 +32,33 @@ def get_db():
     finally:
         db.close()
 
+# This tells FastAPI where the login door is
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """The Bouncer: Checks the JWT token and returns the logged-in user."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        # Decode the digital keycard
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except Exception:
+        # If the token is fake, expired, or tampered with, kick them out
+        raise credentials_exception
+    
+    # Look up the farmer in the database
+    user = db.query(User).filter(User.username == username).first()
+    if user is None:
+        raise credentials_exception
+        
+    return user
 # ---------------------------------------------------------------------------
 # Pydantic schemas (request / response)
 # ---------------------------------------------------------------------------
@@ -41,6 +69,18 @@ class IngestPayload(BaseModel):
     temperature_c: float = Field(..., description="Temperature in Celsius")
     battery_volts: float = Field(..., description="Battery voltage of the sensor")
 
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    phone_number: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
 
 class ReadingOut(BaseModel):
     """Schema returned for each stored reading."""
@@ -156,30 +196,53 @@ def ingest_reading(payload: IngestPayload, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 # Endpoint 2 – Dashboard (recent readings)
 # ---------------------------------------------------------------------------
-@app.get(
-    "/api/sensors/{device_eui}/readings",
-    response_model=list[ReadingOut],
-    summary="Get recent readings for a sensor",
-)
-def get_sensor_readings(device_eui: str, db: Session = Depends(get_db)):
-    """
-    Return the **last 50 readings** for the sensor identified by `device_eui`,
-    ordered from newest to oldest.
-
-    Raises 404 if no readings exist for the given device.
-    """
-    readings = (
-        db.query(Reading)
-        .filter(Reading.device_eui == device_eui)
-        .order_by(Reading.timestamp.desc())
-        .limit(50)
-        .all()
-    )
-
+@app.get("/api/sensors/{device_eui}/readings")
+def get_sensor_readings(
+    device_eui: str, 
+    limit: int = 50, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user) # <-- THE BOUNCER IS NOW ACTIVE
+):
+    # (Leave the rest of your code inside this function exactly the same)
+    readings = db.query(Reading).filter(Reading.device_eui == device_eui).order_by(Reading.timestamp.desc()).limit(limit).all()
     if not readings:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No readings found for device '{device_eui}'.",
-        )
-
+        raise HTTPException(status_code=404, detail="Sensor not found or no readings available")
     return readings
+# ---------------------------------------------------------------------------
+# Endpoint 3 – User Registration (Temporary for MVP Setup)
+# ---------------------------------------------------------------------------
+@app.post("/api/register", summary="Create a new farmer account")
+def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    """Hashes the password and saves the new user to the database."""
+    # Check if username is already taken
+    existing_user = db.query(User).filter(User.username == user.username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    
+    hashed_pw = get_password_hash(user.password)
+    
+    new_user = User(
+        username=user.username, 
+        password_hash=hashed_pw, 
+        phone_number=user.phone_number
+    )
+    db.add(new_user)
+    db.commit()
+    return {"message": f"Farmer '{user.username}' successfully registered!"}
+
+# # ---------------------------------------------------------------------------
+# Endpoint 4 – The Login Vault (UPDATED FOR OAUTH2 FORMS)
+# ---------------------------------------------------------------------------
+@app.post("/api/login", response_model=TokenResponse, summary="Log in to get access token")
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """Verifies credentials and returns a secure JWT token."""
+    # 1. Find the user in the database (Notice we use form_data.username now)
+    db_user = db.query(User).filter(User.username == form_data.username).first()
+    
+    # 2. Check if user exists AND if the password matches the hash
+    if not db_user or not verify_password(form_data.password, db_user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    
+    # 3. Success! Generate the digital keycard
+    access_token = create_access_token(data={"sub": db_user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
