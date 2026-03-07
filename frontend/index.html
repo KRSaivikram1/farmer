@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farm Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-gray-100 p-6 font-sans">
+
+    <div class="max-w-5xl mx-auto">
+        <header class="mb-8 flex justify-between items-end">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Field Monitor</h1>
+                <p class="text-gray-500">Sensor: <span class="font-mono text-sm" id="sensor-id">2CF7F1C042500001</span>
+                </p>
+            </div>
+            <button onclick="fetchSensorData()"
+                class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition">
+                Refresh Data
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+                <h2 class="text-gray-500 text-sm font-semibold uppercase">Current Moisture</h2>
+                <p class="text-4xl font-bold text-gray-800 mt-2" id="moisture">--%</p>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
+                <h2 class="text-gray-500 text-sm font-semibold uppercase">Temperature</h2>
+                <p class="text-4xl font-bold text-gray-800 mt-2" id="temp">--°C</p>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+                <h2 class="text-gray-500 text-sm font-semibold uppercase">Battery Level</h2>
+                <p class="text-4xl font-bold text-gray-800 mt-2" id="battery">--V</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6 h-96">
+            <h2 class="text-gray-800 font-bold mb-4">Moisture Trend (Last 50 Readings)</h2>
+            <div class="relative h-full w-full pb-8">
+                <canvas id="moistureChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
