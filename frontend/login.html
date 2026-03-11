@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farm Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-200 flex items-center justify-center h-screen font-sans">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg w-96 border-t-4 border-blue-600">
+        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">Farm Control Center</h2>
+
+        <form id="loginForm">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Username</label>
+                <input type="text" id="username"
+                    class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                <input type="password" id="password"
+                    class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required>
+            </div>
+
+            <button type="submit"
+                class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200 shadow-md">
+                Log In
+            </button>
+
+            <p id="errorMsg" class="text-red-500 text-sm mt-4 text-center hidden">Invalid username or password.</p>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault(); // Stop the page from refreshing
+
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            // FastAPI OAuth2 requires URL Encoded form data, not JSON
+            const formData = new URLSearchParams();
+            formData.append('username', user);
+            formData.append('password', pass);
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // SUCCESS! Save the digital keycard to the browser's vault
+                    localStorage.setItem('farm_token', data.access_token);
+
+                    // Send the farmer to the dashboard
+                    window.location.href = 'index.html';
+                } else {
+                    // Show error message
+                    document.getElementById('errorMsg').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error("Login failed:", error);
+            }
+        });
+    </script>
+</body>
+
+</html>

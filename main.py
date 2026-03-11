@@ -4,17 +4,17 @@ Farmer Alert – FastAPI Application
 Core API server providing sensor data ingestion and dashboard retrieval
 endpoints for the farm monitoring platform.
 """
-
+from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.orm import sessionmaker, Session
-from datetime import datetime, timedelta
 from auth import verify_password, get_password_hash, create_access_token
 from models import engine, Reading, Sensor, User
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
 from auth import SECRET_KEY, ALGORITHM
+
 # ---------------------------------------------------------------------------
 # Database session factory
 # ---------------------------------------------------------------------------
@@ -83,16 +83,13 @@ class TokenResponse(BaseModel):
     token_type: str
 
 class ReadingOut(BaseModel):
-    """Schema returned for each stored reading."""
+    model_config = ConfigDict(from_attributes=True)
     id: int
     device_eui: str
     timestamp: datetime
     moisture_pct: float
     temperature_c: float
     battery_volts: float
-
-    class Config:
-        from_attributes = True          # allows direct ORM → Pydantic conversion
 
 
 class IngestResponse(BaseModel):
@@ -123,7 +120,7 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
-# Endpoint 1 – Ingestion (UPGRADED WITH ALERTING ENGINE)
+# Endpoint 1 – Ingestion (FIXED REGISTRATION BUG)
 # ---------------------------------------------------------------------------
 @app.post(
     "/api/ingest",
@@ -144,24 +141,26 @@ def ingest_reading(payload: IngestPayload, db: Session = Depends(get_db)):
     db.refresh(new_reading)
 
     # ---------------------------------------------------------
-    # THE ALERTING ENGINE
+    # 2. SENSOR REGISTRATION (Moved outside the threshold check!)
+    # ---------------------------------------------------------
+    # Check if this sensor is registered in our database
+    sensor = db.query(Sensor).filter(Sensor.device_eui == payload.device_eui).first()
+    
+    # Auto-register for testing purposes if it doesn't exist
+    if not sensor:
+        sensor = Sensor(device_eui=payload.device_eui, name="Test Field Sensor")
+        db.add(sensor)
+        db.commit()
+        db.refresh(sensor)
+
+    # ---------------------------------------------------------
+    # 3. THE ALERTING ENGINE
     # ---------------------------------------------------------
     THRESHOLD = 20.0
     COOLDOWN_HOURS = 4
 
     # Only run the complex checks if the moisture is critically low
     if payload.moisture_pct <= THRESHOLD:
-        
-        # Check if this sensor is registered in our database
-        sensor = db.query(Sensor).filter(Sensor.device_eui == payload.device_eui).first()
-        
-        # Auto-register for testing purposes if it doesn't exist
-        if not sensor:
-            sensor = Sensor(device_eui=payload.device_eui, name="Test Field Sensor")
-            db.add(sensor)
-            db.commit()
-            db.refresh(sensor)
-
         now = datetime.utcnow()
         send_alert = False
 
@@ -192,21 +191,20 @@ def ingest_reading(payload: IngestPayload, db: Session = Depends(get_db)):
         device_eui=new_reading.device_eui,
     )
 
-
 # ---------------------------------------------------------------------------
-# Endpoint 2 – Dashboard (recent readings)
+# Endpoint 2 – Get 72-Hour History for a Single Sensor (Updated for Modal)
 # ---------------------------------------------------------------------------
-@app.get("/api/sensors/{device_eui}/readings")
-def get_sensor_readings(
-    device_eui: str, 
-    limit: int = 50, 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # <-- THE BOUNCER IS NOW ACTIVE
-):
-    # (Leave the rest of your code inside this function exactly the same)
-    readings = db.query(Reading).filter(Reading.device_eui == device_eui).order_by(Reading.timestamp.desc()).limit(limit).all()
-    if not readings:
-        raise HTTPException(status_code=404, detail="Sensor not found or no readings available")
+@app.get("/api/sensors/{device_eui}/readings", summary="Get last 72 hours of readings for a specific sensor")
+def get_sensor_readings(device_eui: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Fetches the last 72 hours of raw readings for a specific device."""
+    
+    seventy_two_hours_ago = (datetime.utcnow() - timedelta(hours=72)).isoformat()
+    
+    readings = db.query(Reading).filter(
+        Reading.device_eui == device_eui,
+        Reading.timestamp >= seventy_two_hours_ago
+    ).order_by(Reading.timestamp.desc()).all()
+    
     return readings
 # ---------------------------------------------------------------------------
 # Endpoint 3 – User Registration (Temporary for MVP Setup)
@@ -246,3 +244,73 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     # 3. Success! Generate the digital keycard
     access_token = create_access_token(data={"sub": db_user.username})
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+# ---------------------------------------------------------------------------
+# Endpoint 5 – Dashboard Summary (Multi-Sensor)
+# ---------------------------------------------------------------------------
+@app.get("/api/dashboard", summary="Get the latest reading for all sensors")
+def get_dashboard_summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Returns an array of sensors with their most recent data point."""
+    sensors = db.query(Sensor).all()
+    dashboard_data = []
+    
+    for sensor in sensors:
+        # Grab only the most recent reading for this specific sensor
+        latest = db.query(Reading).filter(Reading.device_eui == sensor.device_eui).order_by(Reading.timestamp.desc()).first()
+        
+        if latest:
+            dashboard_data.append({
+                "device_eui": sensor.device_eui,
+                "name": sensor.name or "Unknown Field",
+                "moisture_pct": latest.moisture_pct,
+                "temperature_c": latest.temperature_c,
+                "battery_volts": latest.battery_volts
+            })
+            
+    return dashboard_data
+
+
+# ---------------------------------------------------------------------------
+# Endpoint 6 – 72-Hour Farm Average Chart Data (Updated for Pagination)
+# ---------------------------------------------------------------------------
+@app.get("/api/dashboard/chart", summary="Get hourly farm averages for the last 72 hours")
+def get_chart_data(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Fetches 72 hours of data, groups it by hour, and calculates the farm-wide average."""
+    
+    # 1. Calculate the cutoff time for 3 DAYS ago (72 hours)
+    seventy_two_hours_ago = (datetime.utcnow() - timedelta(hours=72)).isoformat()
+    
+    # 2. Grab every single reading from every sensor in that time window
+    readings = db.query(Reading).filter(Reading.timestamp >= seventy_two_hours_ago).all()
+    
+    # 3. Group the readings into hourly buckets
+    hourly_data: dict[datetime, list[float]] = {}
+    for r in readings:
+        # Clean up the string (remove 'Z' if present for Python 3.9 compatibility)
+        time_str = str(r.timestamp).replace("Z", "")
+        
+        # Convert the string into an actual Python datetime object!
+        dt_obj = datetime.fromisoformat(time_str)
+        
+        # Now we can safely chop off the minutes and seconds
+        hour_bucket = dt_obj.replace(minute=0, second=0, microsecond=0)
+        
+        # Convert moisture to a float so Python knows it's a number for math
+        hourly_data.setdefault(hour_bucket, []).append(float(r.moisture_pct))
+        
+    # 4. Calculate the average for each hour bucket
+    chart_points = []
+    for hour, values in hourly_data.items():
+        if len(values) > 0:
+            avg: float = sum(values) / len(values)
+            rounded_avg: float = int(avg * 10) / 10
+            chart_points.append({
+                "timestamp": hour.isoformat() + "Z",
+                "avg_moisture": rounded_avg
+            })
+        
+    # 5. Sort them chronologically (oldest to newest)
+    chart_points.sort(key=lambda x: x["timestamp"])
+    
+    return chart_points

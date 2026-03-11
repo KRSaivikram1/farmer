@@ -4,47 +4,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Farm Dashboard</title>
+    <title>Farmer Alert | Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body class="bg-gray-100 p-6 font-sans">
+<body class="bg-gray-50 font-sans">
 
-    <div class="max-w-5xl mx-auto">
-        <header class="mb-8 flex justify-between items-end">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-800">Field Monitor</h1>
-                <p class="text-gray-500">Sensor: <span class="font-mono text-sm" id="sensor-id">2CF7F1C042500001</span>
-                </p>
+    <nav class="bg-white border-b px-8 py-4 flex justify-between items-center shadow-sm">
+        <h1 class="text-xl font-bold text-green-700">Farmer Alert <span
+                class="text-gray-400 font-light text-sm ml-2">v1.0</span></h1>
+        <div class="flex items-center gap-4">
+            <button onclick="logout()" class="text-sm text-gray-500 hover:text-red-600 transition">Logout</button>
+            <button onclick="fetchAllData()"
+                class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition">Refresh
+                Dashboard</button>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-6 space-y-8">
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <div
+                class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col justify-center items-center text-center h-[400px]">
+                <h2 class="text-gray-500 text-sm font-semibold uppercase tracking-widest mb-4">Farm Average</h2>
+                <div class="flex items-baseline justify-center gap-2">
+                    <span id="farm-avg" class="text-8xl font-black text-gray-800">--</span>
+                    <span class="text-3xl font-bold text-gray-400">%</span>
+                </div>
+                <p class="text-gray-400 mt-4 text-sm">Overall moisture status</p>
             </div>
-            <button onclick="fetchSensorData()"
-                class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition">
-                Refresh Data
-            </button>
-        </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-                <h2 class="text-gray-500 text-sm font-semibold uppercase">Current Moisture</h2>
-                <p class="text-4xl font-bold text-gray-800 mt-2" id="moisture">--%</p>
-            </div>
+            <div
+                class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-[400px]">
 
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
-                <h2 class="text-gray-500 text-sm font-semibold uppercase">Temperature</h2>
-                <p class="text-4xl font-bold text-gray-800 mt-2" id="temp">--°C</p>
-            </div>
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="font-bold text-gray-800">Moisture Trends</h3>
+                        <p id="chart-date-label" class="text-sm font-bold text-green-600 mt-1">Today</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Daily Average</p>
+                        <p id="chart-daily-avg" class="text-2xl font-black text-gray-700">--%</p>
+                    </div>
+                </div>
 
-            <div class="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-                <h2 class="text-gray-500 text-sm font-semibold uppercase">Battery Level</h2>
-                <p class="text-4xl font-bold text-gray-800 mt-2" id="battery">--V</p>
+                <div class="relative flex-grow flex items-center mt-2">
+                    <button id="btn-prev-day"
+                        class="absolute left-0 z-10 bg-white border border-gray-100 shadow-md rounded-full p-2 text-gray-400 hover:text-green-600 hover:shadow-lg transition focus:outline-none hidden sm:block transform -translate-x-1/2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7">
+                            </path>
+                        </svg>
+                    </button>
+
+                    <div class="w-full h-full px-2">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+
+                    <button id="btn-next-day"
+                        class="absolute right-0 z-10 bg-white border border-gray-100 shadow-md rounded-full p-2 text-gray-400 hover:text-green-600 hover:shadow-lg transition focus:outline-none hidden sm:block transform translate-x-1/2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6 h-96">
-            <h2 class="text-gray-800 font-bold mb-4">Moisture Trend (Last 50 Readings)</h2>
-            <div class="relative h-full w-full pb-8">
-                <canvas id="moistureChart"></canvas>
+        <div>
+            <h3 class="font-bold text-gray-800 mb-4 ml-2 text-lg">Active Field Sensors</h3>
+            <div id="sensor-widgets-container"
+                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <p class="text-gray-400 text-sm italic col-span-full">Loading sensors...</p>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="sensorModal"
+        class="fixed inset-0 bg-black bg-opacity-40 hidden z-50 flex items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-2xl w-full max-w-3xl p-6 m-4 shadow-2xl relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+
+            <div class="flex justify-between items-start mb-6 pr-8">
+                <div>
+                    <h2 id="modalTitle" class="text-2xl font-bold text-gray-800 mb-1">Sensor Details</h2>
+                    <p id="modalSubtitle" class="text-xs text-gray-500 font-mono">Device EUI</p>
+                    <p id="modal-date-label" class="text-sm font-bold text-blue-600 mt-2">Today</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider">Daily Average</p>
+                    <p id="modal-daily-avg" class="text-2xl font-black text-gray-700">--%</p>
+                </div>
+            </div>
+
+            <div class="relative flex-grow flex items-center h-[300px] w-full">
+                <button id="btn-modal-prev"
+                    class="absolute left-0 z-10 bg-white border border-gray-100 shadow-md rounded-full p-2 text-gray-400 hover:text-blue-600 hover:shadow-lg transition focus:outline-none hidden sm:block transform -translate-x-1/2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7">
+                        </path>
+                    </svg>
+                </button>
+
+                <div class="w-full h-full px-2">
+                    <canvas id="modalChart"></canvas>
+                </div>
+
+                <button id="btn-modal-next"
+                    class="absolute right-0 z-10 bg-white border border-gray-100 shadow-md rounded-full p-2 text-gray-400 hover:text-blue-600 hover:shadow-lg transition focus:outline-none hidden sm:block transform translate-x-1/2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
             </div>
         </div>
     </div>
