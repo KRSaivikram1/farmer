@@ -5,7 +5,6 @@ Core API server providing sensor data ingestion and dashboard retrieval
 endpoints for the farm monitoring platform.
 """
 from datetime import datetime, timedelta
-from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.orm import sessionmaker, Session
@@ -14,6 +13,9 @@ from models import engine, Reading, Sensor, User, Hub  # <-- Added Hub here!
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
 from auth import SECRET_KEY, ALGORITHM
+from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, BackgroundTasks
+from typing import List
+import asyncio
 
 # ---------------------------------------------------------------------------
 # Database session factory
@@ -112,6 +114,45 @@ app.add_middleware(
 )
 
 # ===========================================================================
+# WEBSOCKET MANAGER (Real-Time Enterprise Upgrade)
+# ===========================================================================
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            try:
+                await connection.send_text(message)
+            except:
+                pass
+
+manager = ConnectionManager()
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """The open pipeline for the frontend to listen to."""
+    await manager.connect(websocket)
+    try:
+        while True:
+            # We just keep the line open. The frontend doesn't need to speak, just listen.
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
+async def notify_clients():
+    """Helper function to shout down the pipeline."""
+    await manager.broadcast("NEW_DATA")
+
+# ===========================================================================
 # ADMIN ENDPOINTS (Hub & Sensor Management)
 # ===========================================================================
 
@@ -154,7 +195,7 @@ def deactivate_sensor(device_eui: str, db: Session = Depends(get_db), current_us
 # ===========================================================================
 
 @app.post("/api/ingest", response_model=IngestResponse, status_code=status.HTTP_201_CREATED)
-def ingest_reading(payload: IngestPayload, db: Session = Depends(get_db)):
+def ingest_reading(payload: IngestPayload, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     # NO MORE AUTO-REGISTRATION! The Bouncer checks the guest list.
     sensor = db.query(Sensor).filter(Sensor.device_eui == payload.device_eui).first()
     if not sensor:
@@ -183,6 +224,10 @@ def ingest_reading(payload: IngestPayload, db: Session = Depends(get_db)):
             print("="*60 + "\n")
             sensor.last_alert_sent = now
             db.commit()
+    # ---------------------------------------------------------
+    # ENTERPRISE PUSH: Tell all connected browsers to update!
+    # ---------------------------------------------------------
+    background_tasks.add_task(notify_clients)
 
     return IngestResponse(status="ok", reading_id=new_reading.id, device_eui=new_reading.device_eui)
 

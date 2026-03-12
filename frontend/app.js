@@ -210,7 +210,40 @@ document.getElementById('btn-next-day').addEventListener('click', () => {
 });
 
 // Initial Load
-window.onload = fetchAllData;
+// ==========================================
+// ENTERPRISE REAL-TIME WEBSOCKET CONNECTION
+// ==========================================
+function connectWebSocket() {
+    // Dynamically figure out if we are on localhost or Render, and swap http for ws
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = BASE_URL.replace('http://', '').replace('https://', '').replace('/api', '');
+    const wsUrl = `${wsProtocol}//${wsHost}/ws`;
+
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+        console.log("🟢 Enterprise WebSocket Pipeline Connected!");
+    };
+
+    socket.onmessage = (event) => {
+        if (event.data === "NEW_DATA") {
+            console.log("⚡ New data detected! Updating dashboard silently...");
+            // We got the ping! Fetch the fresh data without reloading the page.
+            fetchAllData();
+        }
+    };
+
+    socket.onclose = () => {
+        console.log("🔴 Pipeline disconnected. Reconnecting in 5 seconds...");
+        setTimeout(connectWebSocket, 5000);
+    };
+}
+
+// Initial Load
+window.onload = () => {
+    fetchAllData();
+    connectWebSocket();
+};
 
 // ==========================================
 // SENSOR DETAIL MODAL LOGIC (Paginated)
