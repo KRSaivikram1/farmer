@@ -215,7 +215,7 @@ document.getElementById('btn-next-day').addEventListener('click', () => {
 // ==========================================
 function connectWebSocket() {
     // Dynamically figure out if we are on localhost or Render, and swap http for ws
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsProtocol = BASE_URL.includes('https') ? 'wss:' : 'ws:';
     const wsHost = BASE_URL.replace('http://', '').replace('https://', '').replace('/api', '');
     const wsUrl = `${wsProtocol}//${wsHost}/ws`;
 
