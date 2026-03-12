@@ -3,7 +3,7 @@ import time
 import random
 
 # Point this directly to your FastAPI Ingestion Endpoint
-API_URL = "http://127.0.0.1:8000/api/ingest"
+API_URL = "https://farmer-alert-api.onrender.com/api/ingest"
 
 # Let's set up 3 simulated sensors with starting values
 sensors = {
