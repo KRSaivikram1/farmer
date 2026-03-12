@@ -128,7 +128,7 @@ function renderDay(offset) {
     // 3. Loop through all 72 hours of data from the backend. 
     // If a point belongs to our target day, drop it into the correct hour slot!
     globalChartData.forEach(point => {
-        const ptDate = new Date(point.timestamp);
+        const ptDate = new Date(point.timestamp + (point.timestamp.endsWith('Z') ? '' : 'Z'));
         if (ptDate.getDate() === targetDate.getDate() &&
             ptDate.getMonth() === targetDate.getMonth() &&
             ptDate.getFullYear() === targetDate.getFullYear()) {
@@ -286,7 +286,7 @@ function renderModalDay(offset) {
     let count = 0;
 
     globalModalData.forEach(point => {
-        const ptDate = new Date(point.timestamp);
+        const ptDate = new Date(point.timestamp + (point.timestamp.endsWith('Z') ? '' : 'Z'));
         if (ptDate.getDate() === targetDate.getDate() &&
             ptDate.getMonth() === targetDate.getMonth() &&
             ptDate.getFullYear() === targetDate.getFullYear()) {
