@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 
@@ -13,8 +13,21 @@ class User(Base):
     password_hash = Column(String)
     phone_number = Column(String)
 
-    # This creates a virtual link so we can easily find a user's sensors
-    sensors = relationship("Sensor", back_populates="owner")
+    # A User can now own multiple Hubs (instead of direct sensors)
+    hubs = relationship("Hub", back_populates="owner")
+
+class Hub(Base):
+    __tablename__ = 'hubs'
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String) # e.g., "North Farm Gateway"
+    location = Column(String, nullable=True)
+    
+    # Links back to the User who owns this hub
+    user_id = Column(Integer, ForeignKey('users.id')) 
+
+    owner = relationship("User", back_populates="hubs")
+    sensors = relationship("Sensor", back_populates="hub")
 
 class Sensor(Base):
     __tablename__ = 'sensors'
@@ -22,10 +35,15 @@ class Sensor(Base):
     # The Device EUI from your SenseCAP is unique, so it acts as our main ID here
     device_eui = Column(String, primary_key=True, index=True)
     name = Column(String)
-    user_id = Column(Integer, ForeignKey('users.id')) # Links to the User table
+    
+    # The magic "Soft Delete" toggle. Defaults to True.
+    is_active = Column(Boolean, default=True) 
     last_alert_sent = Column(DateTime, nullable=True)
 
-    owner = relationship("User", back_populates="sensors")
+    # Links back to the Hub this sensor is connected to
+    hub_id = Column(Integer, ForeignKey('hubs.id')) 
+
+    hub = relationship("Hub", back_populates="sensors")
     readings = relationship("Reading", back_populates="sensor")
 
 class Reading(Base):
