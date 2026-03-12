@@ -1,3 +1,4 @@
+import os
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
@@ -58,8 +59,21 @@ class Reading(Base):
 
     sensor = relationship("Sensor", back_populates="readings")
 
-# --- THE BUILDER ---
-# This tells SQLAlchemy to create a local SQLite file named 'farm_data.db' 
-# and apply all the class structures we just defined above into it.
-engine = create_engine('sqlite:///./farm_data.db', connect_args={"check_same_thread": False})
+# ===========================================================================
+# THE CLOUD-READY BUILDER
+# ===========================================================================
+
+# 1. Look for a Cloud Vault URL first. If not found, use the local SQLite file.
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./farm_data.db")
+
+# 2. Render sometimes uses "postgres://" but SQLAlchemy requires "postgresql://"
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# 3. Connect to the Database (SQLite needs a special rule, Postgres doesn't)
+if "sqlite" in DATABASE_URL:
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DATABASE_URL)
+
 Base.metadata.create_all(bind=engine)

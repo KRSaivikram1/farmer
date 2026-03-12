@@ -214,29 +214,24 @@ document.getElementById('btn-next-day').addEventListener('click', () => {
 // ENTERPRISE REAL-TIME WEBSOCKET CONNECTION
 // ==========================================
 function connectWebSocket() {
-    // Dynamically figure out if we are on localhost or Render, and swap http for ws
-    const wsProtocol = BASE_URL.includes('https') ? 'wss:' : 'ws:';
-    const wsHost = BASE_URL.replace('http://', '').replace('https://', '').replace('/api', '');
-    const wsUrl = `${wsProtocol}//${wsHost}/ws`;
+    // Force WSS for Render, WS for local
+    const isProd = BASE_URL.includes('onrender.com');
+    const wsProtocol = isProd ? 'wss:' : 'ws:';
+
+    // Get the clean domain name (e.g., farmer-alert-api.onrender.com)
+    const domain = BASE_URL.split('/')[2];
+    const wsUrl = `${wsProtocol}//${domain}/ws`;
 
     const socket = new WebSocket(wsUrl);
 
-    socket.onopen = () => {
-        console.log("🟢 Enterprise WebSocket Pipeline Connected!");
-    };
-
+    socket.onopen = () => console.log("🟢 Live Pipeline Connected!");
     socket.onmessage = (event) => {
         if (event.data === "NEW_DATA") {
-            console.log("⚡ New data detected! Updating dashboard silently...");
-            // We got the ping! Fetch the fresh data without reloading the page.
+            console.log("⚡ Auto-updating dashboard...");
             fetchAllData();
         }
     };
-
-    socket.onclose = () => {
-        console.log("🔴 Pipeline disconnected. Reconnecting in 5 seconds...");
-        setTimeout(connectWebSocket, 5000);
-    };
+    socket.onclose = () => setTimeout(connectWebSocket, 5000);
 }
 
 // Initial Load
