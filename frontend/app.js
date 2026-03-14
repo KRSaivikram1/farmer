@@ -70,32 +70,65 @@ function updateAverage(value) {
 }
 
 function renderWidget(sensor, container) {
-    const isCritical = sensor.moisture_pct <= 20;
+    // 1. Calculate how long ago we saw this sensor
+    const now = new Date();
+    // Use the UTC fix we discussed earlier
+    const lastSeen = new Date(sensor.last_reading_time + (sensor.last_reading_time.endsWith('Z') ? '' : 'Z'));
+    const diffInMinutes = Math.floor((now - lastSeen) / (1000 * 60));
 
-    // Added cursor-pointer, hover:-translate-y-1, and onclick!
+    // 2. Determine the Status and Visual Style
+    let statusLabel = "";
+    let statusClass = "";
+    let cardOpacity = "opacity-100";
+    let moistureColor = "text-blue-600";
+
+    if (diffInMinutes > 60) {
+        // OFFLINE STATE
+        const hours = Math.floor(diffInMinutes / 60);
+        statusLabel = hours >= 24 ? `${Math.floor(hours / 24)}d ago` : `${hours}h ago`;
+        statusClass = "bg-gray-100 text-gray-500";
+        cardOpacity = "opacity-75"; // Visual hint that data is stale
+        moistureColor = "text-gray-400";
+    } else if (sensor.moisture_pct <= 20) {
+        // CRITICAL STATE
+        statusLabel = "LOW MOISTURE";
+        statusClass = "bg-red-100 text-red-600 animate-pulse"; // Subtle pulse for attention
+        moistureColor = "text-red-600";
+    } else {
+        // HEALTHY STATE
+        statusLabel = "HEALTHY";
+        statusClass = "bg-emerald-100 text-emerald-600";
+        moistureColor = "text-emerald-600";
+    }
+
+    // 3. Build the Modern Card (Clean Hierarchy)
     container.innerHTML += `
-        <div onclick="openModal('${sensor.device_eui}', '${sensor.name || "Field Sensor"}')" class="bg-white p-5 rounded-xl border border-gray-100 shadow-sm mb-4 hover:shadow-lg transition cursor-pointer transform hover:-translate-y-1">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h4 class="font-bold text-gray-800 text-sm">${sensor.name || "Field Sensor"}</h4>
-                    <p class="text-[10px] text-gray-400 font-mono">${sensor.device_eui}</p>
-                </div>
-                <span class="px-2 py-1 text-[10px] font-bold rounded ${isCritical ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}">
-                    ${isCritical ? 'CRITICAL' : 'ONLINE'}
+        <div onclick="openModal('${sensor.device_eui}', '${sensor.name || "Field Sensor"}')" 
+             class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${cardOpacity}">
+            
+            <div class="flex justify-between items-center mb-6">
+                <h4 class="font-bold text-gray-900 text-lg tracking-tight">${sensor.name || "Field Sensor"}</h4>
+                <span class="px-3 py-1 text-[10px] font-black rounded-full uppercase tracking-widest ${statusClass}">
+                    ${statusLabel}
                 </span>
             </div>
-            <div class="grid grid-cols-3 gap-2">
-                <div class="text-center">
-                    <p class="text-[10px] text-gray-400 uppercase">Moisture</p>
-                    <p class="text-lg font-bold ${isCritical ? 'text-red-600' : 'text-blue-600'}">${sensor.moisture_pct}%</p>
+
+            <div class="mb-6">
+                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Moisture Level</p>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-5xl font-black ${moistureColor} tracking-tighter">${sensor.moisture_pct}</span>
+                    <span class="text-xl font-bold text-gray-300">%</span>
                 </div>
-                <div class="text-center">
-                    <p class="text-[10px] text-gray-400 uppercase">Temp</p>
-                    <p class="text-lg font-bold text-gray-700">${sensor.temperature_c}°C</p>
+            </div>
+
+            <div class="flex justify-between items-center pt-4 border-t border-gray-50">
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-400 font-medium text-xs">Temp</span>
+                    <span class="text-gray-700 font-bold text-sm">${sensor.temperature_c}°</span>
                 </div>
-                <div class="text-center">
-                    <p class="text-[10px] text-gray-400 uppercase">Battery</p>
-                    <p class="text-lg font-bold text-gray-700">${sensor.battery_volts}V</p>
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-400 font-medium text-xs">Battery</span>
+                    <span class="text-gray-700 font-bold text-sm">${sensor.battery_volts}V</span>
                 </div>
             </div>
         </div>
