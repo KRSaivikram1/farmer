@@ -16,6 +16,7 @@ from auth import SECRET_KEY, ALGORITHM
 from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect, BackgroundTasks
 from typing import List
 import asyncio
+import os
 
 # ---------------------------------------------------------------------------
 # Database session factory
@@ -105,9 +106,12 @@ app = FastAPI(
     version="0.1.0",
 )
 
+allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
+origins = allowed_origins_raw.split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
