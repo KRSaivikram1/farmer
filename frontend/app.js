@@ -147,7 +147,6 @@ function renderChart(data) {
     renderDay(currentDayOffset);
 }
 
-// The engine that filters data for a specific day and draws the iOS-style chart
 function renderDay(offset) {
     // 1. Figure out which calendar day we are looking at
     const targetDate = new Date();
@@ -159,7 +158,6 @@ function renderDay(offset) {
     let count = 0;
 
     // 3. Loop through all 72 hours of data from the backend. 
-    // If a point belongs to our target day, drop it into the correct hour slot!
     globalChartData.forEach(point => {
         const ptDate = new Date(point.timestamp + (point.timestamp.endsWith('Z') ? '' : 'Z'));
         if (ptDate.getDate() === targetDate.getDate() &&
@@ -173,11 +171,11 @@ function renderDay(offset) {
         }
     });
 
-    // 4. Update the Daily Average Text in the top right
+    // 4. Update the Daily Average Text (Updated to match Slate colors)
     const avgText = count > 0 ? Math.round(totalMoisture / count) + "%" : "--%";
     document.getElementById('chart-daily-avg').innerText = avgText;
 
-    // 5. Update the Green Date Label text
+    // 5. Update the Emerald Date Label text
     const labelEl = document.getElementById('chart-date-label');
     if (offset === 0) labelEl.innerText = "Today";
     else if (offset === 1) labelEl.innerText = "Yesterday";
@@ -187,12 +185,16 @@ function renderDay(offset) {
     document.getElementById('btn-next-day').style.display = offset === 0 ? 'none' : 'block';
     document.getElementById('btn-prev-day').style.display = offset >= 2 ? 'none' : 'block';
 
-    // 7. Draw the fixed 24-hour chart
-    // 7. Draw the fixed 24-hour chart
+    // 7. Draw the fixed 24-hour chart with Premium Emerald Styling
     const labels = ['12 AM', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM', '12 AM'];
 
     if (mainChartInstance) mainChartInstance.destroy();
     const ctx = document.getElementById('mainChart').getContext('2d');
+
+    // Create a subtle gradient for the fill
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.1)');
+    gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
 
     mainChartInstance = new Chart(ctx, {
         type: 'line',
@@ -201,26 +203,63 @@ function renderDay(offset) {
             datasets: [{
                 label: 'Moisture (%)',
                 data: dayData,
-                borderColor: '#16a34a',
-                backgroundColor: 'rgba(22, 163, 74, 0.05)',
+                borderColor: '#10b981', // Emerald 500
+                borderWidth: 4,         // Thicker line for "Enterprise" feel
+                backgroundColor: gradient,
                 fill: true,
-                tension: 0.4,
-                spanGaps: true, // MAGIC! This connects the line even if some hours are blank
+                tension: 0.4,           // Smooth curves
+                spanGaps: true,
                 pointBackgroundColor: '#fff',
-                pointBorderColor: '#16a34a',
-                pointBorderWidth: 2,
-                pointRadius: 4
+                pointBorderColor: '#10b981',
+                pointBorderWidth: 3,
+                pointRadius: 0,         // Hide points by default for a cleaner look...
+                pointHoverRadius: 6,    // ...but show them on hover
+                pointHoverBackgroundColor: '#10b981',
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 2
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            interaction: {
+                intersect: false,
+                mode: 'index',
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e293b', // Slate 800
+                    titleFont: { size: 12, weight: 'bold' },
+                    bodyFont: { size: 14, weight: '900' },
+                    padding: 12,
+                    cornerRadius: 10,
+                    displayColors: false,
+                    callbacks: {
+                        label: function (context) {
+                            return ` ${context.parsed.y}% Moisture`;
+                        }
+                    }
+                }
+            },
             scales: {
-                y: { min: 0, max: 100 },
+                y: {
+                    min: 0,
+                    max: 100,
+                    grid: { color: '#f1f5f9' }, // Very subtle slate lines
+                    ticks: {
+                        color: '#94a3b8', // Slate 400
+                        font: { size: 11, weight: '600' }
+                    }
+                },
                 x: {
                     grid: { display: false },
-                    ticks: { maxTicksLimit: 9, maxRotation: 0 }
+                    ticks: {
+                        maxTicksLimit: 7,
+                        maxRotation: 0,
+                        color: '#94a3b8', // Slate 400
+                        font: { size: 11, weight: '600' }
+                    }
                 }
             }
         }
