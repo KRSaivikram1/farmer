@@ -70,65 +70,65 @@ function updateAverage(value) {
 }
 
 function renderWidget(sensor, container) {
-    // 1. Calculate how long ago we saw this sensor
-    const now = new Date();
-    // Use the UTC fix we discussed earlier
-    const lastSeen = new Date(sensor.last_reading_time + (sensor.last_reading_time.endsWith('Z') ? '' : 'Z'));
-    const diffInMinutes = Math.floor((now - lastSeen) / (1000 * 60));
+    // 1. Defensive check: find the timestamp (checking multiple possible names)
+    const timestamp = sensor.last_reading_time || sensor.last_seen || null;
 
-    // 2. Determine the Status and Visual Style
-    let statusLabel = "";
-    let statusClass = "";
+    const now = new Date();
+    let statusLabel = "UNKNOWN";
+    let statusClass = "bg-gray-100 text-gray-500";
     let cardOpacity = "opacity-100";
     let moistureColor = "text-blue-600";
 
-    if (diffInMinutes > 60) {
-        // OFFLINE STATE
-        const hours = Math.floor(diffInMinutes / 60);
-        statusLabel = hours >= 24 ? `${Math.floor(hours / 24)}d ago` : `${hours}h ago`;
-        statusClass = "bg-gray-100 text-gray-500";
-        cardOpacity = "opacity-75"; // Visual hint that data is stale
-        moistureColor = "text-gray-400";
-    } else if (sensor.moisture_pct <= 20) {
-        // CRITICAL STATE
-        statusLabel = "LOW MOISTURE";
-        statusClass = "bg-red-100 text-red-600 animate-pulse"; // Subtle pulse for attention
-        moistureColor = "text-red-600";
-    } else {
-        // HEALTHY STATE
-        statusLabel = "HEALTHY";
-        statusClass = "bg-emerald-100 text-emerald-600";
-        moistureColor = "text-emerald-600";
+    // 2. Calculate "Last Seen" only if timestamp exists
+    if (timestamp) {
+        const lastSeen = new Date(timestamp + (timestamp.endsWith('Z') ? '' : 'Z'));
+        const diffInMinutes = Math.floor((now - lastSeen) / (1000 * 60));
+
+        if (diffInMinutes > 60) {
+            const hours = Math.floor(diffInMinutes / 60);
+            statusLabel = hours >= 24 ? `${Math.floor(hours / 24)}d ago` : `${hours}h ago`;
+            statusClass = "bg-gray-100 text-gray-400";
+            cardOpacity = "opacity-70";
+            moistureColor = "text-slate-300";
+        } else if (sensor.moisture_pct <= 20) {
+            statusLabel = "CRITICAL";
+            statusClass = "bg-red-100 text-red-600 animate-pulse";
+            moistureColor = "text-red-600";
+        } else {
+            statusLabel = "HEALTHY";
+            statusClass = "bg-emerald-100 text-emerald-600";
+            moistureColor = "text-emerald-600";
+        }
     }
 
-    // 3. Build the Modern Card (Clean Hierarchy)
+    // 3. Build the Card
     container.innerHTML += `
         <div onclick="openModal('${sensor.device_eui}', '${sensor.name || "Field Sensor"}')" 
-             class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 ${cardOpacity}">
+             class="bg-white p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 hover:shadow-xl transition-all duration-500 cursor-pointer transform hover:-translate-y-2 ${cardOpacity}">
             
             <div class="flex justify-between items-center mb-6">
-                <h4 class="font-bold text-gray-900 text-lg tracking-tight">${sensor.name || "Field Sensor"}</h4>
+                <h4 class="font-black text-slate-800 text-lg tracking-tighter italic">${sensor.name || "Sensor"}</h4>
                 <span class="px-3 py-1 text-[10px] font-black rounded-full uppercase tracking-widest ${statusClass}">
                     ${statusLabel}
                 </span>
             </div>
 
             <div class="mb-6">
-                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest mb-1">Moisture Level</p>
+                <p class="text-[10px] text-slate-300 font-black uppercase tracking-[0.2em] mb-1">Moisture</p>
                 <div class="flex items-baseline gap-1">
-                    <span class="text-5xl font-black ${moistureColor} tracking-tighter">${sensor.moisture_pct}</span>
-                    <span class="text-xl font-bold text-gray-300">%</span>
+                    <span class="text-6xl font-black ${moistureColor} tracking-tighter italic">${sensor.moisture_pct}</span>
+                    <span class="text-xl font-black text-slate-200">%</span>
                 </div>
             </div>
 
-            <div class="flex justify-between items-center pt-4 border-t border-gray-50">
+            <div class="flex justify-between items-center pt-4 border-t border-slate-50">
                 <div class="flex items-center gap-2">
-                    <span class="text-gray-400 font-medium text-xs">Temp</span>
-                    <span class="text-gray-700 font-bold text-sm">${sensor.temperature_c}°</span>
+                    <span class="text-slate-300 font-bold text-[10px] uppercase">Temp</span>
+                    <span class="text-slate-700 font-black text-sm">${sensor.temperature_c}°C</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-gray-400 font-medium text-xs">Battery</span>
-                    <span class="text-gray-700 font-bold text-sm">${sensor.battery_volts}V</span>
+                    <span class="text-slate-300 font-bold text-[10px] uppercase">Bat</span>
+                    <span class="text-slate-700 font-black text-sm">${sensor.battery_volts}V</span>
                 </div>
             </div>
         </div>
