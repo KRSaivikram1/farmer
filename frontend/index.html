@@ -8,20 +8,41 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@500;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Mono:wght@500&family=Inter:wght@400;600;700;900&display=swap"
         rel="stylesheet">
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
 
-        .data-mono {
-            font-family: 'JetBrains+Mono', monospace;
+        /* Heading Font (Logo and Section Titles) */
+        .font-syne {
+            font-family: 'Syne', sans-serif;
+        }
+
+        /* Data Font (Numbers and Readings) */
+        .font-mono {
+            font-family: 'DM Mono', monospace;
         }
 
         .custom-card {
             background: rgba(17, 25, 31, 0.6);
             border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Reverting the Hero Number to be massive and dominant */
+        #farm-avg {
+            font-size: 9rem;
+            line-height: 0.8;
+            letter-spacing: -0.05em;
+        }
+
+        /* Mobile adjustment for the massive number */
+        @media (max-width: 640px) {
+            #farm-avg {
+                font-size: 6rem;
+            }
         }
     </style>
 </head>
