@@ -60,7 +60,7 @@ function updateAverage(value) {
     const roundedValue = Math.round(value);
 
     element.innerText = roundedValue;
-    element.className = "font-mono italic tracking-tighter ";
+    element.className = "font-mono tracking-tighter ";
 
     if (roundedValue <= 20) {
         element.classList.add('text-red-500');
@@ -94,7 +94,7 @@ function renderWidget(sensor, container) {
              class="custom-card rounded-2xl p-6 transition-all duration-500 cursor-pointer border border-white/5 hover:border-${themeColor}-500/40 relative overflow-hidden">
             
             <div class="flex justify-between items-start mb-6">
-                <h4 class="font-syne text-white text-xl italic uppercase">${sensor.name || "Field"}</h4>
+                <h4 class="font-syne text-white text-xl uppercase">${sensor.name || "Field"}</h4>
                 <span class="px-2 py-0.5 text-[9px] font-black rounded-sm border border-${themeColor}-500/30 text-${themeColor}-500 tracking-widest">
                     ${statusLabel}
                 </span>
@@ -102,7 +102,7 @@ function renderWidget(sensor, container) {
 
             <div class="mb-4">
                 <div class="flex items-baseline gap-1">
-                    <span class="text-6xl font-mono italic tracking-tighter text-white">${moisture}</span>
+                    <span class="text-6xl font-mono tracking-tighter text-white">${moisture}</span>
                     <span class="text-xl font-bold text-slate-700">%</span>
                 </div>
             </div>
@@ -395,22 +395,24 @@ function renderModalDay(offset) {
     // Draw the Modal Chart
     const labels = ['12 AM', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM', '12 AM'];
 
-    if (modalChartInstance) modalChartInstance.destroy();
-    const ctx = document.getElementById('modalChart').getContext('2d');
+    const ctx = document.getElementById('modalChart');
+    if (!ctx) return; // Safety check
 
-    // Blue Gradient for Modal
-    const blueGradient = ctx.createLinearGradient(0, 0, 0, 350);
+    if (modalChartInstance) modalChartInstance.destroy();
+
+    const context = ctx.getContext('2d');
+    const blueGradient = context.createLinearGradient(0, 0, 0, 400);
     blueGradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
     blueGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
 
-    modalChartInstance = new Chart(ctx, {
+    modalChartInstance = new Chart(context, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
                 label: 'Moisture (%)',
                 data: dayData,
-                borderColor: '#3b82f6', // Electric Blue
+                borderColor: '#3b82f6',
                 borderWidth: 4,
                 backgroundColor: blueGradient,
                 fill: true,
