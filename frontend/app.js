@@ -395,64 +395,62 @@ function renderModalDay(offset) {
     // Draw the Modal Chart
     const labels = ['12 AM', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM', '12 AM'];
 
-    function renderModalDay(offset) {
-        // ... (Keep your existing data calculation logic here) ...
+    if (modalChartInstance) modalChartInstance.destroy();
+    const ctx = document.getElementById('modalChart').getContext('2d');
 
-        if (modalChartInstance) modalChartInstance.destroy();
-        const ctx = document.getElementById('modalChart').getContext('2d');
+    // Blue Gradient for Modal
+    const blueGradient = ctx.createLinearGradient(0, 0, 0, 350);
+    blueGradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+    blueGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
 
-        // Blue Gradient for Modal
-        const blueGradient = ctx.createLinearGradient(0, 0, 0, 350);
-        blueGradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
-        blueGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
-
-        modalChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Moisture (%)',
-                    data: dayData,
-                    borderColor: '#3b82f6', // Electric Blue
-                    borderWidth: 4,
-                    backgroundColor: blueGradient,
-                    fill: true,
-                    tension: 0.4,
-                    spanGaps: true,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    pointHoverBackgroundColor: '#3b82f6'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: {
-                        min: 0, max: 100,
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        ticks: { color: '#475569', font: { family: 'DM Mono', size: 10 } }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#475569', font: { family: 'DM Mono', size: 10 } }
-                    }
+    modalChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Moisture (%)',
+                data: dayData,
+                borderColor: '#3b82f6', // Electric Blue
+                borderWidth: 4,
+                backgroundColor: blueGradient,
+                fill: true,
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                pointHoverBackgroundColor: '#3b82f6'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: {
+                    min: 0, max: 100,
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: { color: '#475569', font: { family: 'DM Mono', size: 10 } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#475569', font: { family: 'DM Mono', size: 10 } }
                 }
             }
-        });
-    }
-    // Modal Arrow Button Listeners
-    document.getElementById('btn-modal-prev').addEventListener('click', () => {
-        if (currentModalOffset < 2) {
-            currentModalOffset++;
-            renderModalDay(currentModalOffset);
         }
     });
+}
 
-    document.getElementById('btn-modal-next').addEventListener('click', () => {
-        if (currentModalOffset > 0) {
-            currentModalOffset--;
-            renderModalDay(currentModalOffset);
-        }
-    });
+// Modal Arrow Button Listeners
+document.getElementById('btn-modal-prev').addEventListener('click', () => {
+    if (currentModalOffset < 2) {
+        currentModalOffset++;
+        renderModalDay(currentModalOffset);
+    }
+});
+
+document.getElementById('btn-modal-next').addEventListener('click', () => {
+    if (currentModalOffset > 0) {
+        currentModalOffset--;
+        renderModalDay(currentModalOffset);
+    }
+});
