@@ -56,79 +56,89 @@ async function fetchAllData() {
 
 function updateAverage(value) {
     const element = document.getElementById('farm-avg');
-    element.innerText = Math.round(value);
+    const accent = document.getElementById('hero-accent');
+    const badge = document.getElementById('hero-status-badge');
+    const roundedValue = Math.round(value);
 
-    // Remove old colors just in case it updates
-    element.classList.remove('text-red-600', 'text-gray-800');
+    element.innerText = roundedValue;
 
-    // Change color based on health (20% threshold)
-    if (value <= 20) {
-        element.classList.add('text-red-600');
+    // Reset Classes
+    element.className = "text-9xl font-black tracking-tighter data-mono italic leading-none ";
+    accent.className = "absolute top-0 left-0 w-full h-1.5 ";
+    badge.className = "px-3 py-1 text-[10px] font-black rounded-full uppercase tracking-widest ";
+
+    if (roundedValue <= 50) {
+        element.classList.add('text-amber-500');
+        accent.classList.add('bg-amber-500');
+        badge.classList.add('bg-amber-500/10', 'text-amber-500');
+        badge.innerText = "BELOW THRESHOLD";
     } else {
-        element.classList.add('text-gray-800');
+        element.classList.add('text-emerald-500');
+        accent.classList.add('bg-emerald-500');
+        badge.classList.add('bg-emerald-500/10', 'text-emerald-500');
+        badge.innerText = "OPTIMAL HEALTH";
     }
 }
 
 function renderWidget(sensor, container) {
-    // 1. Defensive check: find the timestamp (checking multiple possible names)
+    const moisture = sensor.moisture_pct;
     const timestamp = sensor.last_reading_time || sensor.last_seen || null;
 
-    const now = new Date();
-    let statusLabel = "UNKNOWN";
-    let statusClass = "bg-gray-100 text-gray-500";
-    let cardOpacity = "opacity-100";
-    let moistureColor = "text-blue-600";
+    // Status Logic
+    let statusLabel = "HEALTHY";
+    let themeColor = "emerald";
+    if (moisture <= 20) { themeColor = "red"; statusLabel = "CRITICAL"; }
+    else if (moisture <= 50) { themeColor = "amber"; statusLabel = "WARNING"; }
 
-    // 2. Calculate "Last Seen" only if timestamp exists
+    // Last Seen Formatting
+    let timeLabel = "---";
     if (timestamp) {
-        const lastSeen = new Date(timestamp + (timestamp.endsWith('Z') ? '' : 'Z'));
-        const diffInMinutes = Math.floor((now - lastSeen) / (1000 * 60));
-
-        if (diffInMinutes > 60) {
-            const hours = Math.floor(diffInMinutes / 60);
-            statusLabel = hours >= 24 ? `${Math.floor(hours / 24)}d ago` : `${hours}h ago`;
-            statusClass = "bg-gray-100 text-gray-400";
-            cardOpacity = "opacity-70";
-            moistureColor = "text-slate-300";
-        } else if (sensor.moisture_pct <= 20) {
-            statusLabel = "CRITICAL";
-            statusClass = "bg-red-100 text-red-600 animate-pulse";
-            moistureColor = "text-red-600";
-        } else {
-            statusLabel = "HEALTHY";
-            statusClass = "bg-emerald-100 text-emerald-600";
-            moistureColor = "text-emerald-600";
-        }
+        const diff = Math.floor((new Date() - new Date(timestamp + (timestamp.endsWith('Z') ? '' : 'Z'))) / (1000 * 60));
+        timeLabel = diff > 60 ? `${Math.floor(diff / 60)}h ago` : `${diff}m ago`;
+        if (diff > 120) themeColor = "slate"; // Ghost state if offline
     }
 
-    // 3. Build the Card
+    const colorHex = { emerald: '#10b981', amber: '#f59e0b', red: '#ef4444', slate: '#475569' }[themeColor];
+
     container.innerHTML += `
-        <div onclick="openModal('${sensor.device_eui}', '${sensor.name || "Field Sensor"}')" 
-             class="bg-white p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 hover:shadow-xl transition-all duration-500 cursor-pointer transform hover:-translate-y-2 ${cardOpacity}">
+        <div onclick="openModal('${sensor.device_eui}', '${sensor.name || "Field"}')" 
+             class="custom-card rounded-2xl p-6 transition-all duration-500 cursor-pointer group hover:border-${themeColor}-500/30 relative overflow-hidden">
             
-            <div class="flex justify-between items-center mb-6">
-                <h4 class="font-black text-slate-800 text-lg tracking-tighter italic">${sensor.name || "Sensor"}</h4>
-                <span class="px-3 py-1 text-[10px] font-black rounded-full uppercase tracking-widest ${statusClass}">
+            <div class="absolute top-0 left-0 w-full h-1 bg-${themeColor}-500 opacity-60"></div>
+            
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h4 class="font-black text-white text-lg tracking-tighter italic uppercase group-hover:text-${themeColor}-400 transition">${sensor.name || "Field"}</h4>
+                </div>
+                <span class="px-2 py-0.5 text-[9px] font-black rounded-sm border border-${themeColor}-500/30 text-${themeColor}-500 tracking-widest">
                     ${statusLabel}
                 </span>
             </div>
 
-            <div class="mb-6">
-                <p class="text-[10px] text-slate-300 font-black uppercase tracking-[0.2em] mb-1">Moisture</p>
+            <div class="mb-4">
+                <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">Moisture Content</p>
                 <div class="flex items-baseline gap-1">
-                    <span class="text-6xl font-black ${moistureColor} tracking-tighter italic">${sensor.moisture_pct}</span>
-                    <span class="text-xl font-black text-slate-200">%</span>
+                    <span class="text-6xl font-black data-mono italic tracking-tighter text-white">${moisture}</span>
+                    <span class="text-xl font-bold text-slate-700">%</span>
                 </div>
             </div>
 
-            <div class="flex justify-between items-center pt-4 border-t border-slate-50">
-                <div class="flex items-center gap-2">
-                    <span class="text-slate-300 font-bold text-[10px] uppercase">Temp</span>
-                    <span class="text-slate-700 font-black text-sm">${sensor.temperature_c}°C</span>
+            <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-8">
+                <div class="h-full bg-${themeColor}-500 shadow-[0_0_10px_${colorHex}]" style="width: ${moisture}%"></div>
+            </div>
+
+            <div class="grid grid-cols-3 pt-4 border-t border-white/5">
+                <div>
+                    <p class="text-[8px] text-slate-600 font-black uppercase">Temp</p>
+                    <p class="text-xs font-bold text-slate-300 data-mono">${sensor.temperature_c}°C</p>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-slate-300 font-bold text-[10px] uppercase">Bat</span>
-                    <span class="text-slate-700 font-black text-sm">${sensor.battery_volts}V</span>
+                <div>
+                    <p class="text-[8px] text-slate-600 font-black uppercase">Battery</p>
+                    <p class="text-xs font-bold text-slate-300 data-mono">${sensor.battery_volts}V</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[8px] text-slate-600 font-black uppercase">Last Seen</p>
+                    <p class="text-xs font-bold text-slate-400 data-mono">${timeLabel}</p>
                 </div>
             </div>
         </div>
@@ -193,7 +203,7 @@ function renderDay(offset) {
 
     // Create a subtle gradient for the fill
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.1)');
+    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
     gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
 
     mainChartInstance = new Chart(ctx, {
@@ -203,17 +213,17 @@ function renderDay(offset) {
             datasets: [{
                 label: 'Moisture (%)',
                 data: dayData,
-                borderColor: '#10b981', // Emerald 500
-                borderWidth: 4,         // Thicker line for "Enterprise" feel
+                borderColor: '#10b981', // High-contrast Emerald
+                borderWidth: 4,
                 backgroundColor: gradient,
                 fill: true,
-                tension: 0.4,           // Smooth curves
+                tension: 0.4,
                 spanGaps: true,
-                pointBackgroundColor: '#fff',
+                pointBackgroundColor: '#0B1215', // Matches background
                 pointBorderColor: '#10b981',
                 pointBorderWidth: 3,
-                pointRadius: 0,         // Hide points by default for a cleaner look...
-                pointHoverRadius: 6,    // ...but show them on hover
+                pointRadius: 0,
+                pointHoverRadius: 6,
                 pointHoverBackgroundColor: '#10b981',
                 pointHoverBorderColor: '#fff',
                 pointHoverBorderWidth: 2
@@ -229,15 +239,17 @@ function renderDay(offset) {
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#1e293b', // Slate 800
-                    titleFont: { size: 12, weight: 'bold' },
-                    bodyFont: { size: 14, weight: '900' },
+                    backgroundColor: '#11191f', // Deepest Slate
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    borderWidth: 1,
+                    titleFont: { family: 'Inter', size: 10, weight: 'bold' },
+                    bodyFont: { family: 'JetBrains Mono', size: 14, weight: '900' },
                     padding: 12,
-                    cornerRadius: 10,
+                    cornerRadius: 8,
                     displayColors: false,
                     callbacks: {
                         label: function (context) {
-                            return ` ${context.parsed.y}% Moisture`;
+                            return `${context.parsed.y}% MOISTURE`;
                         }
                     }
                 }
@@ -246,10 +258,13 @@ function renderDay(offset) {
                 y: {
                     min: 0,
                     max: 100,
-                    grid: { color: '#f1f5f9' }, // Very subtle slate lines
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)', // Very subtle white grid
+                        drawBorder: false
+                    },
                     ticks: {
-                        color: '#94a3b8', // Slate 400
-                        font: { size: 11, weight: '600' }
+                        color: '#475569', // Slate 500
+                        font: { family: 'JetBrains Mono', size: 10, weight: '600' }
                     }
                 },
                 x: {
@@ -257,8 +272,8 @@ function renderDay(offset) {
                     ticks: {
                         maxTicksLimit: 7,
                         maxRotation: 0,
-                        color: '#94a3b8', // Slate 400
-                        font: { size: 11, weight: '600' }
+                        color: '#475569', // Slate 500
+                        font: { family: 'JetBrains Mono', size: 10, weight: '600' }
                     }
                 }
             }

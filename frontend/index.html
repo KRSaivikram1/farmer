@@ -4,95 +4,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Farmer Alert | Intelligence Dashboard</title>
+    <title>Farmer Alert | Mission Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@500;800&display=swap"
         rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
 
-        .chart-container {
-            position: relative;
-            height: 100%;
-            width: 100%;
+        .data-mono {
+            font-family: 'JetBrains+Mono', monospace;
+        }
+
+        .custom-card {
+            background: rgba(17, 25, 31, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
     </style>
 </head>
 
-<body class="bg-[#F8FAFC] text-slate-900">
+<body class="bg-[#0B1215] text-slate-100 min-h-screen">
 
     <nav
-        class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-5 flex justify-between items-center sticky top-0 z-40">
+        class="border-b border-white/5 bg-[#0B1215]/80 backdrop-blur-md px-8 py-4 flex justify-between items-center sticky top-0 z-50">
         <div class="flex items-center gap-3">
             <div
-                class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-200">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 5a7 7 0 100 14 7 7 0 000-14z">
-                    </path>
+                class="w-8 h-8 bg-emerald-500 rounded flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.4)]">
+                <svg class="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                 </svg>
             </div>
             <div>
-                <h1 class="text-xl font-extrabold text-slate-800 tracking-tight leading-none">Farmer<span
-                        class="text-emerald-600">Alert</span></h1>
-                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Enterprise v1.0</span>
+                <h1 class="text-lg font-black tracking-tighter uppercase italic">Farmer<span
+                        class="text-emerald-500">Alert</span></h1>
+                <p class="text-[9px] text-slate-500 font-bold tracking-[0.3em] uppercase">Enterprise Intelligence v1.0
+                </p>
             </div>
         </div>
-        <div class="flex items-center gap-6">
+        <div class="flex items-center gap-4">
             <button onclick="logout()"
-                class="text-sm font-bold text-slate-400 hover:text-red-500 transition-colors">Logout</button>
+                class="text-xs font-bold text-slate-500 hover:text-red-400 transition">LOGOUT</button>
             <button onclick="fetchAllData()"
-                class="bg-slate-900 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-emerald-600 shadow-xl shadow-slate-200 transition-all active:scale-95">Refresh
-                Dashboard</button>
+                class="bg-white/5 border border-white/10 text-white px-5 py-2 rounded font-bold text-xs hover:bg-white/10 transition flex items-center gap-2">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                    </path>
+                </svg>
+                REFRESH
+            </button>
         </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto p-8 space-y-10">
+    <main class="max-w-[1400px] mx-auto p-6 space-y-6">
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
             <div
-                class="bg-white rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-10 flex flex-col justify-center items-center text-center relative overflow-hidden h-[420px]">
-                <div class="absolute top-0 left-0 w-full h-1.5 bg-emerald-500"></div>
-                <h2 class="text-slate-400 text-xs font-black uppercase tracking-[0.3em] mb-12">Farm Average</h2>
-                <div class="relative inline-block">
-                    <span id="farm-avg" class="text-9xl font-black text-slate-800 tracking-tighter italic">--</span>
-                    <span class="absolute left-full bottom-4 ml-1 text-3xl font-black text-slate-300">%</span>
+                class="lg:col-span-3 custom-card rounded-2xl p-8 flex flex-col justify-between h-[450px] relative overflow-hidden">
+                <div id="hero-accent" class="absolute top-0 left-0 w-full h-1.5 bg-slate-700"></div>
+                <div>
+                    <h2 class="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] mb-1">Farm Average</h2>
+                    <p class="text-[10px] text-slate-600 font-bold uppercase italic">System Threshold: 50%</p>
+                </div>
+
+                <div class="py-4">
+                    <span id="farm-avg"
+                        class="text-9xl font-black tracking-tighter data-mono italic leading-none">--</span>
+                    <span class="text-3xl font-bold text-slate-700 ml-1">%</span>
+                </div>
+
+                <div id="hero-badge-container">
+                    <span id="hero-status-badge"
+                        class="px-3 py-1 bg-slate-800 text-slate-400 text-[10px] font-black rounded-full uppercase tracking-widest">Scanning...</span>
                 </div>
             </div>
 
-            <div
-                class="lg:col-span-2 bg-white rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-8 flex flex-col h-[420px]">
-                <div class="flex justify-between items-start mb-6">
+            <div class="lg:col-span-9 custom-card rounded-2xl p-6 flex flex-col h-[450px]">
+                <div class="flex justify-between items-start mb-4">
                     <div>
-                        <h3 class="font-extrabold text-slate-800 text-xl tracking-tight">Moisture Trends</h3>
-                        <p id="chart-date-label" class="text-sm font-bold text-emerald-600">Today</p>
+                        <h3 class="font-bold text-sm text-slate-300 uppercase tracking-widest">Moisture Trends</h3>
+                        <p id="chart-date-label" class="text-xs font-bold text-emerald-500 mt-1 uppercase">Loading
+                            Day...</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Daily Avg</p>
-                        <p id="chart-daily-avg" class="text-3xl font-black text-slate-800 tracking-tight">--%</p>
+                        <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest">Daily Average</p>
+                        <p id="chart-daily-avg" class="text-2xl font-black data-mono text-white">--%</p>
                     </div>
                 </div>
 
-                <div class="relative flex-grow flex items-center">
+                <div class="relative flex-grow">
                     <button id="btn-prev-day"
-                        class="absolute -left-4 z-10 bg-white border border-slate-100 shadow-xl rounded-2xl p-3 text-slate-400 hover:text-emerald-600 hover:scale-110 transition-all focus:outline-none hidden sm:block">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/5 hover:bg-white/10 p-2 rounded text-slate-400 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7">
                             </path>
                         </svg>
                     </button>
-
-                    <div class="chart-container px-4">
+                    <div class="w-full h-full px-8">
                         <canvas id="mainChart"></canvas>
                     </div>
-
                     <button id="btn-next-day"
-                        class="absolute -right-4 z-10 bg-white border border-slate-100 shadow-xl rounded-2xl p-3 text-slate-400 hover:text-emerald-600 hover:scale-110 transition-all focus:outline-none hidden sm:block">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/5 hover:bg-white/10 p-2 rounded text-slate-400 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7">
                             </path>
                         </svg>
@@ -101,72 +119,40 @@
             </div>
         </div>
 
-        <div>
-            <div class="flex items-baseline gap-3 mb-8 ml-2">
-                <h3 class="font-black text-slate-800 text-2xl tracking-tight italic">Field Intelligence</h3>
-                <div class="h-px flex-grow bg-slate-200/60 ml-4"></div>
+        <div class="space-y-4 pt-4">
+            <div class="flex items-center gap-4">
+                <h3 class="font-black text-white text-lg tracking-tight uppercase italic">Field Intelligence</h3>
+                <div class="h-px flex-grow bg-white/5"></div>
             </div>
 
-            <div id="sensor-widgets-container"
-                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                <div class="col-span-full py-20 text-center">
-                    <div
-                        class="animate-spin inline-block w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full mb-4">
-                    </div>
-                    <p class="text-slate-400 font-bold tracking-widest text-xs uppercase">Syncing with Field Hub...</p>
-                </div>
+            <div id="sensor-widgets-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             </div>
         </div>
-
     </main>
 
     <div id="sensorModal"
-        class="fixed inset-0 bg-slate-900/60 hidden z-50 flex items-center justify-center backdrop-blur-md transition-all">
-        <div class="bg-white rounded-[3rem] w-full max-w-4xl p-10 m-4 shadow-2xl relative border border-white/20">
-            <button onclick="closeModal()"
-                class="absolute top-8 right-8 text-slate-300 hover:text-red-500 transition-colors">
+        class="fixed inset-0 bg-black/90 hidden z-[60] flex items-center justify-center backdrop-blur-xl transition-all">
+        <div class="bg-[#0B1215] border border-white/10 rounded-3xl w-full max-w-4xl p-10 m-4 shadow-2xl relative">
+            <button onclick="closeModal()" class="absolute top-8 right-8 text-slate-500 hover:text-white transition">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
                     </path>
                 </svg>
             </button>
-
-            <div class="flex justify-between items-start mb-10 pr-12">
+            <div class="flex justify-between items-end mb-8 border-b border-white/5 pb-8">
                 <div>
-                    <h2 id="modalTitle" class="text-4xl font-black text-slate-900 tracking-tighter mb-2 italic">Sensor
-                        Details</h2>
-                    <div class="flex items-center gap-3">
-                        <span id="modalSubtitle"
-                            class="text-xs font-black bg-slate-100 text-slate-500 px-3 py-1 rounded-full tracking-widest uppercase">DEVICE_ID</span>
-                        <span id="modal-date-label" class="text-sm font-bold text-blue-600">Today</span>
-                    </div>
+                    <h2 id="modalTitle" class="text-4xl font-black text-white tracking-tighter italic italic uppercase">
+                        Sensor Name</h2>
+                    <p id="modalSubtitle" class="text-[10px] font-bold text-slate-500 tracking-[0.3em] uppercase mt-1">
+                        DEVICE_EUI_REFERENCE</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-1">Interval Avg</p>
-                    <p id="modal-daily-avg" class="text-4xl font-black text-slate-900 tracking-tight">--%</p>
+                    <p id="modal-date-label" class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1">
+                        Today</p>
+                    <p id="modal-daily-avg" class="text-5xl font-black data-mono text-white tracking-tighter">--%</p>
                 </div>
             </div>
-
-            <div class="relative h-[350px] w-full">
-                <button id="btn-modal-prev"
-                    class="absolute -left-6 top-1/2 -translate-y-1/2 z-10 bg-white border border-slate-100 shadow-xl rounded-2xl p-3 text-slate-400 hover:text-blue-600 transition-all hidden sm:block">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7">
-                        </path>
-                    </svg>
-                </button>
-
-                <div class="chart-container px-4">
-                    <canvas id="modalChart"></canvas>
-                </div>
-
-                <button id="btn-modal-next"
-                    class="absolute -right-6 top-1/2 -translate-y-1/2 z-10 bg-white border border-slate-100 shadow-xl rounded-2xl p-3 text-slate-400 hover:text-blue-600 transition-all hidden sm:block">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path>
-                    </svg>
-                </button>
-            </div>
+            <div class="h-[350px] w-full"><canvas id="modalChart"></canvas></div>
         </div>
     </div>
 
