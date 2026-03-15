@@ -319,7 +319,10 @@ let globalModalData = [];
 let currentModalOffset = 0; // 0 = Today, 1 = Yesterday
 
 async function openModal(device_eui, sensorName) {
-    document.getElementById('sensorModal').classList.remove('hidden');
+    // 1. Show the modal first
+    const modal = document.getElementById('sensorModal');
+    modal.classList.remove('hidden');
+
     document.getElementById('modalTitle').innerText = sensorName;
     document.getElementById('modalSubtitle').innerText = device_eui;
 
@@ -330,8 +333,13 @@ async function openModal(device_eui, sensorName) {
         if (!response.ok) throw new Error("Failed to fetch sensor details");
 
         globalModalData = await response.json();
-        currentModalOffset = 0; // Reset to Today
-        renderModalDay(currentModalOffset);
+        currentModalOffset = 0;
+
+        // 2. THE FIX: Wait 100ms for the browser to "render" the modal 
+        // before we try to draw the chart inside it.
+        setTimeout(() => {
+            renderModalDay(currentModalOffset);
+        }, 100);
 
     } catch (error) {
         console.error("Modal fetch error:", error);
