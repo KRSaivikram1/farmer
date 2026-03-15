@@ -428,13 +428,38 @@ function renderModalDay(offset) {
                 spanGaps: true,
                 pointRadius: 0,
                 pointHoverRadius: 6,
-                pointHoverBackgroundColor: '#3b82f6'
+                pointHoverBackgroundColor: '#3b82f6',
+                pointBorderColor: '#3b82f6',
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 2,
+                pointBackgroundColor: '#0B1215'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            interaction: {
+                intersect: false,
+                mode: 'index',
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#11191f',
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    borderWidth: 1,
+                    titleFont: { family: 'Inter', size: 10, weight: 'bold' },
+                    bodyFont: { family: 'DM Mono', size: 14, weight: '900' },
+                    padding: 12,
+                    cornerRadius: 8,
+                    displayColors: false,
+                    callbacks: {
+                        label: function (context) {
+                            return `${context.parsed.y}% MOISTURE`;
+                        }
+                    }
+                }
+            },
             scales: {
                 y: {
                     min: 0, max: 100,
@@ -443,7 +468,12 @@ function renderModalDay(offset) {
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { color: '#475569', font: { family: 'DM Mono', size: 10 } }
+                    ticks: {
+                        maxTicksLimit: 7,
+                        maxRotation: 0,
+                        color: '#475569',
+                        font: { family: 'DM Mono', size: 10 }
+                    }
                 }
             }
         }
