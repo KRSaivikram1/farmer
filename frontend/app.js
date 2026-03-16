@@ -201,15 +201,6 @@ function renderDay(offset) {
     if (mainChartInstance) mainChartInstance.destroy();
     const ctx = document.getElementById('mainChart').getContext('2d');
 
-    // Dual-zone gradient: emerald above 20%, red below 20%
-    // Y-axis is 0-100, so 20% threshold = 80% down the canvas
-    const chartArea = document.getElementById('mainChart');
-    const gradient = ctx.createLinearGradient(0, 0, 0, chartArea.clientHeight || 400);
-    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');     // Top (100%) - emerald
-    gradient.addColorStop(0.75, 'rgba(16, 185, 129, 0.08)'); // Near threshold - fading emerald
-    gradient.addColorStop(0.80, 'rgba(239, 68, 68, 0.08)');  // At 20% threshold - transition to red
-    gradient.addColorStop(1, 'rgba(239, 68, 68, 0.25)');     // Bottom (0%) - red danger zone
-
     // Build annotations
     const annotations = {
         thresholdLine: {
@@ -262,8 +253,11 @@ function renderDay(offset) {
                 data: dayData,
                 borderColor: '#10b981',
                 borderWidth: 4,
-                backgroundColor: gradient,
-                fill: true,
+                fill: {
+                    target: { value: 20 },
+                    above: 'rgba(16, 185, 129, 0.15)',
+                    below: 'rgba(239, 68, 68, 0.2)'
+                },
                 tension: 0.4,
                 spanGaps: true,
                 segment: {
@@ -482,13 +476,6 @@ function renderModalDay(offset) {
 
     const context = ctx.getContext('2d');
 
-    // Dual-zone gradient: blue above 20%, red below 20%
-    const blueGradient = context.createLinearGradient(0, 0, 0, ctx.clientHeight || 350);
-    blueGradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
-    blueGradient.addColorStop(0.75, 'rgba(59, 130, 246, 0.08)');
-    blueGradient.addColorStop(0.80, 'rgba(239, 68, 68, 0.08)');
-    blueGradient.addColorStop(1, 'rgba(239, 68, 68, 0.25)');
-
     // Build annotations
     const modalAnnotations = {
         thresholdLine: {
@@ -541,8 +528,11 @@ function renderModalDay(offset) {
                 data: dayData,
                 borderColor: '#3b82f6',
                 borderWidth: 4,
-                backgroundColor: blueGradient,
-                fill: true,
+                fill: {
+                    target: { value: 20 },
+                    above: 'rgba(59, 130, 246, 0.15)',
+                    below: 'rgba(239, 68, 68, 0.2)'
+                },
                 tension: 0.4,
                 spanGaps: true,
                 segment: {
