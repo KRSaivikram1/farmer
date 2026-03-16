@@ -82,12 +82,28 @@ function renderWidget(sensor, container) {
     let statusLabel = moisture <= 20 ? "CRITICAL" : "HEALTHY";
 
     let timeLabel = "---";
+    let isOffline = false;
     if (timestamp) {
-        const diff = Math.floor((new Date() - new Date(timestamp + (timestamp.endsWith('Z') ? '' : 'Z'))) / (1000 * 60));
-        timeLabel = diff > 60 ? `${Math.floor(diff / 60)}h ago` : `${diff}m ago`;
+        const tsString = timestamp.endsWith('Z') ? timestamp : timestamp + 'Z';
+        const diff = Math.floor((new Date() - new Date(tsString)) / (1000 * 60));
+
+        if (diff < 1) timeLabel = "Just now";
+        else if (diff < 60) timeLabel = `${diff}m ago`;
+        else if (diff < 1440) timeLabel = `${Math.floor(diff / 60)}h ago`;
+        else timeLabel = `${Math.floor(diff / 1440)}d ago`;
+
+        // Offline detection: no data for 60+ minutes
+        if (diff >= 60) {
+            isOffline = true;
+            // Only override to OFFLINE if not already CRITICAL (moisture alarm takes priority)
+            if (statusLabel !== "CRITICAL") {
+                themeColor = "amber";
+                statusLabel = "OFFLINE";
+            }
+        }
     }
 
-    const colorHex = themeColor === 'red' ? '#ef4444' : '#10b981';
+    const colorHex = themeColor === 'red' ? '#ef4444' : themeColor === 'amber' ? '#f59e0b' : '#10b981';
 
     container.innerHTML += `
         <div onclick="openModal('${sensor.device_eui}', '${sensor.name || "Field"}')" 

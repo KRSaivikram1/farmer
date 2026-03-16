@@ -284,7 +284,8 @@ def get_dashboard_summary(db: Session = Depends(get_db), current_user: User = De
                 "name": sensor.name,
                 "moisture_pct": latest.moisture_pct,
                 "temperature_c": latest.temperature_c,
-                "battery_volts": latest.battery_volts
+                "battery_volts": latest.battery_volts,
+                "last_reading_time": latest.timestamp.isoformat() if latest.timestamp else None
             })
     return dashboard_data
 
