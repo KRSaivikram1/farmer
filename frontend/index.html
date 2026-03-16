@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link
-        href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Mono:wght@500&family=Inter:wght@400;600;700;900&display=swap"
+        href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@500&family=Inter:wght@400;500;600;700;900&display=swap"
         rel="stylesheet">
 
     <style>
@@ -17,9 +17,7 @@
             background-color: #0B1215;
         }
 
-        .font-syne {
-            font-family: 'Syne', sans-serif;
-        }
+
 
         .font-mono {
             font-family: 'DM Mono', monospace;
@@ -58,8 +56,8 @@
                 </svg>
             </div>
             <div>
-                <h1 class="font-syne text-lg tracking-tighter uppercase text-white">Farmer<span
-                        class="text-emerald-500 font-syne">Alert</span></h1>
+                <h1 class="text-lg font-bold tracking-tighter uppercase text-white">Farmer<span
+                        class="text-emerald-500">Alert</span></h1>
                 <p class="text-[9px] text-slate-500 font-bold tracking-[0.3em] uppercase">Enterprise Intelligence v1.0
                 </p>
             </div>
@@ -68,7 +66,7 @@
             <button onclick="logout()"
                 class="text-xs font-bold text-slate-500 hover:text-red-400 transition">LOGOUT</button>
             <button onclick="fetchAllData()"
-                class="bg-white/5 border border-white/10 text-white px-5 py-2 rounded font-bold text-xs hover:bg-white/10 transition flex items-center gap-2 font-syne">
+                class="bg-white/5 border border-white/10 text-white px-5 py-2 rounded font-bold text-xs hover:bg-white/10 transition flex items-center gap-2">
                 REFRESH
             </button>
         </div>
@@ -81,9 +79,9 @@
                 class="lg:col-span-3 custom-card rounded-3xl p-8 flex flex-col justify-between h-[450px] relative overflow-hidden">
                 <div id="hero-accent" class="absolute top-0 left-0 w-full h-1.5 bg-slate-700"></div>
                 <div>
-                    <h2 class="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] mb-1 font-syne">Farm
+                    <h2 class="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] mb-1">Farm
                         Average</h2>
-                    <p class="text-[10px] text-slate-600 font-bold uppercase font-syne">Threshold: 20%</p>
+                    <p class="text-[10px] text-slate-600 font-bold uppercase">Threshold: 20%</p>
                 </div>
 
                 <div class="py-4 text-center">
@@ -93,20 +91,20 @@
 
                 <div id="hero-badge-container" class="flex justify-center">
                     <span id="hero-status-badge"
-                        class="px-3 py-1 bg-slate-800 text-slate-400 text-[10px] font-black rounded-full uppercase tracking-widest font-syne">Syncing...</span>
+                        class="px-3 py-1 bg-slate-800 text-slate-400 text-[10px] font-black rounded-full uppercase tracking-widest">Syncing...</span>
                 </div>
             </div>
 
             <div class="lg:col-span-9 custom-card rounded-3xl p-8 flex flex-col h-[450px]">
                 <div class="flex justify-between items-start mb-4">
                     <div>
-                        <h3 class="font-syne font-bold text-sm text-slate-300 uppercase tracking-widest">Moisture Trends
+                        <h3 class="font-bold text-sm text-slate-300 uppercase tracking-widest">Moisture Trends
                         </h3>
-                        <p id="chart-date-label" class="text-xs font-bold text-emerald-500 mt-1 uppercase font-syne">
+                        <p id="chart-date-label" class="text-xs font-bold text-emerald-500 mt-1 uppercase">
                             Today</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-1 font-syne">Daily
+                        <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-1">Daily
                             Avg</p>
                         <p id="chart-daily-avg" class="text-2xl font-black font-mono text-white">--%</p>
                     </div>
@@ -135,7 +133,7 @@
         </div>
 
         <div class="space-y-4 pt-4">
-            <h3 class="font-syne font-black text-white text-lg tracking-tight uppercase ml-2">Field Intelligence
+            <h3 class="font-black text-white text-lg tracking-tight uppercase ml-2">Field Intelligence
             </h3>
             <div id="sensor-widgets-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             </div>
@@ -153,7 +151,7 @@
             </button>
             <div class="flex justify-between items-end mb-8 border-b border-white/5 pb-8">
                 <div>
-                    <h2 id="modalTitle" class="text-4xl font-syne text-white tracking-tighter uppercase">Sensor Name
+                    <h2 id="modalTitle" class="text-4xl font-bold text-white tracking-tighter uppercase">Sensor Name
                     </h2>
                     <p id="modalSubtitle"
                         class="text-[10px] font-mono font-bold text-slate-500 tracking-[0.3em] uppercase mt-1">DEVICE_ID
@@ -161,7 +159,7 @@
                 </div>
                 <div class="text-right">
                     <p id="modal-date-label"
-                        class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1 font-syne">Today</p>
+                        class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1">Today</p>
                     <p id="modal-daily-avg" class="text-5xl font-mono font-black text-white tracking-tighter">--%</p>
                 </div>
             </div>

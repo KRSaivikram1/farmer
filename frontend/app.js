@@ -94,7 +94,7 @@ function renderWidget(sensor, container) {
              class="custom-card rounded-2xl p-6 transition-all duration-500 cursor-pointer border border-white/5 hover:border-${themeColor}-500/40 relative overflow-hidden">
             
             <div class="flex justify-between items-start mb-6">
-                <h4 class="font-syne text-white text-xl uppercase">${sensor.name || "Field"}</h4>
+                <h4 class="text-white text-xl font-bold uppercase">${sensor.name || "Field"}</h4>
                 <span class="px-2 py-0.5 text-[9px] font-black rounded-sm border border-${themeColor}-500/30 text-${themeColor}-500 tracking-widest">
                     ${statusLabel}
                 </span>
