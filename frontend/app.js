@@ -168,6 +168,8 @@ function renderDay(offset) {
 
     globalChartData.forEach(point => {
         const ptDate = new Date(point.timestamp + (point.timestamp.endsWith('Z') ? '' : 'Z'));
+
+        // Existing logic for current day
         if (ptDate.getDate() === targetDate.getDate() &&
             ptDate.getMonth() === targetDate.getMonth() &&
             ptDate.getFullYear() === targetDate.getFullYear()) {
@@ -177,7 +179,22 @@ function renderDay(offset) {
             totalMoisture += point.avg_moisture;
             count++;
         }
+
+        // --- NEW FIX: PEAK AT THE START OF THE NEXT DAY ---
+        // This finds the midnight reading of the FOLLOWING day to close the graph
+        const nextDay = new Date(targetDate);
+        nextDay.setDate(targetDate.getDate() + 1);
+
+        if (ptDate.getDate() === nextDay.getDate() &&
+            ptDate.getHours() === 0) {
+            dayData[24] = point.avg_moisture; // Set the 25th point (12 AM end)
+        }
     });
+
+    // --- FALLBACK: If no "Next Day" data exists yet, bridge the gap manually ---
+    if (dayData[24] === null && dayData[23] !== null) {
+        dayData[24] = dayData[23];
+    }
 
     const avgText = count > 0 ? Math.round(totalMoisture / count) + "%" : "--%";
     document.getElementById('chart-daily-avg').innerText = avgText;
