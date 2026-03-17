@@ -201,22 +201,12 @@ function renderDay(offset) {
     if (mainChartInstance) mainChartInstance.destroy();
     const ctx = document.getElementById('mainChart').getContext('2d');
 
-    // --- CONDITIONAL FILL LOGIC ---
-    // We create a vertical gradient (top to bottom)
-    const fillGradient = ctx.createLinearGradient(0, 0, 0, 400);
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
+    gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
 
-    // Chart.js uses percentages for gradient stops. 
-    // Since our max Y is 100, the 20% threshold is at 80% from the top.
-    // (100 - 20) / 100 = 0.8
-    const thresholdStop = 0.8;
-
-    // Emerald Green for the healthy zone (Top down to threshold)
-    fillGradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
-    fillGradient.addColorStop(thresholdStop, 'rgba(16, 185, 129, 0.2)');
-
-    // Alert Red for the critical zone (Threshold down to bottom)
-    fillGradient.addColorStop(thresholdStop, 'rgba(239, 68, 68, 0.4)');
-    fillGradient.addColorStop(1, 'rgba(239, 68, 68, 0.4)');
+    // LOGIC: Determine current hour for the vertical line if offset is 0
+    const currentHour = new Date().getHours();
 
     mainChartInstance = new Chart(ctx, {
         type: 'line',
@@ -226,9 +216,9 @@ function renderDay(offset) {
                 {
                     label: 'Moisture (%)',
                     data: dayData,
-                    borderColor: '#10b981', // Keeping the line emerald for consistency
+                    borderColor: '#10b981',
                     borderWidth: 4,
-                    backgroundColor: fillGradient, // Apply the conditional fill
+                    backgroundColor: gradient,
                     fill: true,
                     tension: 0.4,
                     spanGaps: true,
