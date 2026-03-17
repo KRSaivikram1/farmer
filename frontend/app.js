@@ -402,17 +402,18 @@ function renderModalDay(offset) {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() - offset);
 
+    // --- MOVE THESE TO THE TOP ---
+    // 1. Initialize the array first so it exists for the loop below
+    const dayData = new Array(25).fill(null);
     const hourlySums = new Array(25).fill(0);
     const hourlyCounts = new Array(25).fill(0);
     let totalMoisture = 0;
     let count = 0;
 
-    // ... inside renderModalDay ...
-
+    // 2. Now run the loop (it can now find 'dayData')
     globalModalData.forEach(point => {
         const ptDate = new Date(point.timestamp + (point.timestamp.endsWith('Z') ? '' : 'Z'));
 
-        // Match the current day logic
         if (ptDate.getDate() === targetDate.getDate() &&
             ptDate.getMonth() === targetDate.getMonth() &&
             ptDate.getFullYear() === targetDate.getFullYear()) {
@@ -420,41 +421,32 @@ function renderModalDay(offset) {
             const hour = ptDate.getHours();
             hourlySums[hour] += point.moisture_pct;
             hourlyCounts[hour]++;
-
             totalMoisture += point.moisture_pct;
             count++;
         }
 
-        // --- THE FIX: Bridge to the next day's midnight ---
+        // Bridge to the next day's midnight
         const nextDay = new Date(targetDate);
         nextDay.setDate(targetDate.getDate() + 1);
 
         if (ptDate.getDate() === nextDay.getDate() &&
             ptDate.getMonth() === nextDay.getMonth() &&
             ptDate.getHours() === 0) {
-
-            // Average the midnight readings if there are multiple for that hour
             dayData[24] = point.moisture_pct;
         }
     });
 
-    // Calculate final averages for indices 0-23
+    // 3. Calculate final averages for indices 0-23
     for (let i = 0; i < 24; i++) {
         if (hourlyCounts[i] > 0) {
             dayData[i] = hourlySums[i] / hourlyCounts[i];
         }
     }
 
-    // --- FALLBACK: Smooth the edge if next-day data isn't available yet ---
+    // 4. Fallback for the 12 AM gap
     if (dayData[24] === null && dayData[23] !== null) {
         dayData[24] = dayData[23];
     }
-
-    const dayData = new Array(25).fill(null);
-    for (let i = 0; i < 25; i++) {
-        if (hourlyCounts[i] > 0) dayData[i] = hourlySums[i] / hourlyCounts[i];
-    }
-
     const avgText = count > 0 ? Math.round(totalMoisture / count) + "%" : "--%";
     document.getElementById('modal-daily-avg').innerText = avgText;
 
