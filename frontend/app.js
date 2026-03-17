@@ -201,70 +201,25 @@ function renderDay(offset) {
     if (mainChartInstance) mainChartInstance.destroy();
     const ctx = document.getElementById('mainChart').getContext('2d');
 
-    // Build annotations
-    const annotations = {
-        thresholdLine: {
-            type: 'line',
-            yMin: 20,
-            yMax: 20,
-            borderColor: 'rgba(239, 68, 68, 0.5)',
-            borderWidth: 2,
-            borderDash: [6, 4],
-            label: {
-                display: true,
-                content: '20% Threshold',
-                position: 'start',
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                color: '#ef4444',
-                font: { family: 'DM Mono', size: 9, weight: '600' },
-                padding: { top: 2, bottom: 2, left: 6, right: 6 }
-            }
-        }
-    };
-
-    // Add "Now" line only on Today view
-    if (offset === 0) {
-        const currentHour = new Date().getHours();
-        annotations.nowLine = {
-            type: 'line',
-            xMin: currentHour,
-            xMax: currentHour,
-            borderColor: 'rgba(148, 163, 184, 0.4)',
-            borderWidth: 1.5,
-            borderDash: [4, 4],
-            label: {
-                display: true,
-                content: 'Now',
-                position: 'start',
-                backgroundColor: 'rgba(148, 163, 184, 0.15)',
-                color: '#94a3b8',
-                font: { family: 'Inter', size: 9, weight: '600' },
-                padding: { top: 2, bottom: 2, left: 6, right: 6 }
-            }
-        };
-    }
+    // Create a subtle gradient for the fill
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
+    gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
 
     mainChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                // Dataset 0: Main visible line with green fill to bottom
                 label: 'Moisture (%)',
                 data: dayData,
-                borderColor: '#10b981',
+                borderColor: '#10b981', // High-contrast Emerald
                 borderWidth: 4,
-                backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                fill: 'origin',
+                backgroundColor: gradient,
+                fill: true,
                 tension: 0.4,
                 spanGaps: true,
-                segment: {
-                    borderColor: ctx2 => {
-                        const y = ctx2.p1.parsed.y;
-                        return y < 20 ? '#ef4444' : '#10b981';
-                    }
-                },
-                pointBackgroundColor: '#0B1215',
+                pointBackgroundColor: '#0B1215', // Matches background
                 pointBorderColor: '#10b981',
                 pointBorderWidth: 3,
                 pointRadius: 0,
@@ -272,20 +227,6 @@ function renderDay(offset) {
                 pointHoverBackgroundColor: '#10b981',
                 pointHoverBorderColor: '#fff',
                 pointHoverBorderWidth: 2
-            }, {
-                // Dataset 1: Invisible line — only renders red fill below 20%
-                data: dayData,
-                borderColor: 'transparent',
-                borderWidth: 0,
-                fill: {
-                    target: { value: 20 },
-                    above: 'transparent',
-                    below: 'rgba(239, 68, 68, 0.25)'
-                },
-                tension: 0.4,
-                spanGaps: true,
-                pointRadius: 0,
-                pointHoverRadius: 0
             }]
         },
         options: {
@@ -297,15 +238,12 @@ function renderDay(offset) {
             },
             plugins: {
                 legend: { display: false },
-                annotation: {
-                    annotations: annotations
-                },
                 tooltip: {
-                    backgroundColor: '#11191f',
+                    backgroundColor: '#11191f', // Deepest Slate
                     borderColor: 'rgba(255,255,255,0.1)',
                     borderWidth: 1,
                     titleFont: { family: 'Inter', size: 10, weight: 'bold' },
-                    bodyFont: { family: 'DM Mono', size: 14, weight: '900' },
+                    bodyFont: { family: 'JetBrains Mono', size: 14, weight: '900' },
                     padding: 12,
                     cornerRadius: 8,
                     displayColors: false,
@@ -321,12 +259,12 @@ function renderDay(offset) {
                     min: 0,
                     max: 100,
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.05)',
+                        color: 'rgba(255, 255, 255, 0.05)', // Very subtle white grid
                         drawBorder: false
                     },
                     ticks: {
-                        color: '#475569',
-                        font: { family: 'DM Mono', size: 10, weight: '600' }
+                        color: '#475569', // Slate 500
+                        font: { family: 'JetBrains Mono', size: 10, weight: '600' }
                     }
                 },
                 x: {
@@ -334,8 +272,8 @@ function renderDay(offset) {
                     ticks: {
                         maxTicksLimit: 7,
                         maxRotation: 0,
-                        color: '#475569',
-                        font: { family: 'DM Mono', size: 10, weight: '600' }
+                        color: '#475569', // Slate 500
+                        font: { family: 'JetBrains Mono', size: 10, weight: '600' }
                     }
                 }
             }
@@ -487,70 +425,23 @@ function renderModalDay(offset) {
     if (modalChartInstance) modalChartInstance.destroy();
 
     const context = ctx.getContext('2d');
-
-    // Build annotations
-    const modalAnnotations = {
-        thresholdLine: {
-            type: 'line',
-            yMin: 20,
-            yMax: 20,
-            borderColor: 'rgba(239, 68, 68, 0.5)',
-            borderWidth: 2,
-            borderDash: [6, 4],
-            label: {
-                display: true,
-                content: '20% Threshold',
-                position: 'start',
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                color: '#ef4444',
-                font: { family: 'DM Mono', size: 9, weight: '600' },
-                padding: { top: 2, bottom: 2, left: 6, right: 6 }
-            }
-        }
-    };
-
-    // Add "Now" line only on Today view
-    if (offset === 0) {
-        const currentHour = new Date().getHours();
-        modalAnnotations.nowLine = {
-            type: 'line',
-            xMin: currentHour,
-            xMax: currentHour,
-            borderColor: 'rgba(148, 163, 184, 0.4)',
-            borderWidth: 1.5,
-            borderDash: [4, 4],
-            label: {
-                display: true,
-                content: 'Now',
-                position: 'start',
-                backgroundColor: 'rgba(148, 163, 184, 0.15)',
-                color: '#94a3b8',
-                font: { family: 'Inter', size: 9, weight: '600' },
-                padding: { top: 2, bottom: 2, left: 6, right: 6 }
-            }
-        };
-    }
+    const blueGradient = context.createLinearGradient(0, 0, 0, 400);
+    blueGradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+    blueGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
 
     modalChartInstance = new Chart(context, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                // Dataset 0: Main visible line with blue fill to bottom
                 label: 'Moisture (%)',
                 data: dayData,
                 borderColor: '#3b82f6',
                 borderWidth: 4,
-                backgroundColor: 'rgba(59, 130, 246, 0.15)',
-                fill: 'origin',
+                backgroundColor: blueGradient,
+                fill: true,
                 tension: 0.4,
                 spanGaps: true,
-                segment: {
-                    borderColor: ctx2 => {
-                        const y = ctx2.p1.parsed.y;
-                        return y < 20 ? '#ef4444' : '#3b82f6';
-                    }
-                },
                 pointRadius: 0,
                 pointHoverRadius: 6,
                 pointHoverBackgroundColor: '#3b82f6',
@@ -558,20 +449,6 @@ function renderModalDay(offset) {
                 pointHoverBorderColor: '#fff',
                 pointHoverBorderWidth: 2,
                 pointBackgroundColor: '#0B1215'
-            }, {
-                // Dataset 1: Invisible line — only renders red fill below 20%
-                data: dayData,
-                borderColor: 'transparent',
-                borderWidth: 0,
-                fill: {
-                    target: { value: 20 },
-                    above: 'transparent',
-                    below: 'rgba(239, 68, 68, 0.25)'
-                },
-                tension: 0.4,
-                spanGaps: true,
-                pointRadius: 0,
-                pointHoverRadius: 0
             }]
         },
         options: {
@@ -583,9 +460,6 @@ function renderModalDay(offset) {
             },
             plugins: {
                 legend: { display: false },
-                annotation: {
-                    annotations: modalAnnotations
-                },
                 tooltip: {
                     backgroundColor: '#11191f',
                     borderColor: 'rgba(255,255,255,0.1)',
