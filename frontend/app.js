@@ -249,15 +249,13 @@ function renderDay(offset) {
         data: {
             labels: labels,
             datasets: [{
+                // Dataset 0: Main visible line with green fill to bottom
                 label: 'Moisture (%)',
                 data: dayData,
                 borderColor: '#10b981',
                 borderWidth: 4,
-                fill: {
-                    target: { value: 20 },
-                    above: 'rgba(16, 185, 129, 0.15)',
-                    below: 'rgba(239, 68, 68, 0.2)'
-                },
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                fill: 'origin',
                 tension: 0.4,
                 spanGaps: true,
                 segment: {
@@ -274,6 +272,20 @@ function renderDay(offset) {
                 pointHoverBackgroundColor: '#10b981',
                 pointHoverBorderColor: '#fff',
                 pointHoverBorderWidth: 2
+            }, {
+                // Dataset 1: Invisible line — only renders red fill below 20%
+                data: dayData,
+                borderColor: 'transparent',
+                borderWidth: 0,
+                fill: {
+                    target: { value: 20 },
+                    above: 'transparent',
+                    below: 'rgba(239, 68, 68, 0.25)'
+                },
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 0,
+                pointHoverRadius: 0
             }]
         },
         options: {
@@ -524,15 +536,13 @@ function renderModalDay(offset) {
         data: {
             labels: labels,
             datasets: [{
+                // Dataset 0: Main visible line with blue fill to bottom
                 label: 'Moisture (%)',
                 data: dayData,
                 borderColor: '#3b82f6',
                 borderWidth: 4,
-                fill: {
-                    target: { value: 20 },
-                    above: 'rgba(59, 130, 246, 0.15)',
-                    below: 'rgba(239, 68, 68, 0.2)'
-                },
+                backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                fill: 'origin',
                 tension: 0.4,
                 spanGaps: true,
                 segment: {
@@ -548,6 +558,20 @@ function renderModalDay(offset) {
                 pointHoverBorderColor: '#fff',
                 pointHoverBorderWidth: 2,
                 pointBackgroundColor: '#0B1215'
+            }, {
+                // Dataset 1: Invisible line — only renders red fill below 20%
+                data: dayData,
+                borderColor: 'transparent',
+                borderWidth: 0,
+                fill: {
+                    target: { value: 20 },
+                    above: 'transparent',
+                    below: 'rgba(239, 68, 68, 0.25)'
+                },
+                tension: 0.4,
+                spanGaps: true,
+                pointRadius: 0,
+                pointHoverRadius: 0
             }]
         },
         options: {
