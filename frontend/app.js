@@ -181,7 +181,7 @@ function renderDay(offset) {
         }
     });
 
-    // 4. Update the Daily Average Text (Updated to match Slate colors)
+    // 4. Update the Daily Average Text
     const avgText = count > 0 ? Math.round(totalMoisture / count) + "%" : "--%";
     document.getElementById('chart-daily-avg').innerText = avgText;
 
@@ -191,43 +191,61 @@ function renderDay(offset) {
     else if (offset === 1) labelEl.innerText = "Yesterday";
     else labelEl.innerText = targetDate.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 
-    // 6. Show or Hide the Left/Right arrows based on where we are
+    // 6. Show or Hide navigation arrows
     document.getElementById('btn-next-day').style.display = offset === 0 ? 'none' : 'block';
     document.getElementById('btn-prev-day').style.display = offset >= 2 ? 'none' : 'block';
 
-    // 7. Draw the fixed 24-hour chart with Premium Emerald Styling
+    // 7. Draw the fixed 24-hour chart
     const labels = ['12 AM', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM', '12 AM'];
 
     if (mainChartInstance) mainChartInstance.destroy();
     const ctx = document.getElementById('mainChart').getContext('2d');
 
-    // Create a subtle gradient for the fill
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
-    gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+    // --- CONDITIONAL FILL LOGIC ---
+    // We create a vertical gradient (top to bottom)
+    const fillGradient = ctx.createLinearGradient(0, 0, 0, 400);
+
+    // Chart.js uses percentages for gradient stops. 
+    // Since our max Y is 100, the 20% threshold is at 80% from the top.
+    // (100 - 20) / 100 = 0.8
+    const thresholdStop = 0.8;
+
+    // Emerald Green for the healthy zone (Top down to threshold)
+    fillGradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
+    fillGradient.addColorStop(thresholdStop, 'rgba(16, 185, 129, 0.2)');
+
+    // Alert Red for the critical zone (Threshold down to bottom)
+    fillGradient.addColorStop(thresholdStop, 'rgba(239, 68, 68, 0.4)');
+    fillGradient.addColorStop(1, 'rgba(239, 68, 68, 0.4)');
 
     mainChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
-            datasets: [{
-                label: 'Moisture (%)',
-                data: dayData,
-                borderColor: '#10b981', // High-contrast Emerald
-                borderWidth: 4,
-                backgroundColor: gradient,
-                fill: true,
-                tension: 0.4,
-                spanGaps: true,
-                pointBackgroundColor: '#0B1215', // Matches background
-                pointBorderColor: '#10b981',
-                pointBorderWidth: 3,
-                pointRadius: 0,
-                pointHoverRadius: 6,
-                pointHoverBackgroundColor: '#10b981',
-                pointHoverBorderColor: '#fff',
-                pointHoverBorderWidth: 2
-            }]
+            datasets: [
+                {
+                    label: 'Moisture (%)',
+                    data: dayData,
+                    borderColor: '#10b981', // Keeping the line emerald for consistency
+                    borderWidth: 4,
+                    backgroundColor: fillGradient, // Apply the conditional fill
+                    fill: true,
+                    tension: 0.4,
+                    spanGaps: true,
+                    pointRadius: 0,
+                    order: 0
+                },
+                {
+                    label: 'Threshold',
+                    data: new Array(25).fill(20), //
+                    borderColor: 'rgba(239, 68, 68, 0.4)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false,
+                    order: 1
+                }
+            ]
         },
         options: {
             responsive: true,
@@ -239,7 +257,7 @@ function renderDay(offset) {
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#11191f', // Deepest Slate
+                    backgroundColor: '#11191f',
                     borderColor: 'rgba(255,255,255,0.1)',
                     borderWidth: 1,
                     titleFont: { family: 'Inter', size: 10, weight: 'bold' },
@@ -249,6 +267,7 @@ function renderDay(offset) {
                     displayColors: false,
                     callbacks: {
                         label: function (context) {
+                            if (context.dataset.label === 'Threshold') return ' THRESHOLD: 20%';
                             return `${context.parsed.y}% MOISTURE`;
                         }
                     }
@@ -258,12 +277,9 @@ function renderDay(offset) {
                 y: {
                     min: 0,
                     max: 100,
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.05)', // Very subtle white grid
-                        drawBorder: false
-                    },
+                    grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
                     ticks: {
-                        color: '#475569', // Slate 500
+                        color: '#475569',
                         font: { family: 'JetBrains Mono', size: 10, weight: '600' }
                     }
                 },
@@ -272,12 +288,38 @@ function renderDay(offset) {
                     ticks: {
                         maxTicksLimit: 7,
                         maxRotation: 0,
-                        color: '#475569', // Slate 500
+                        color: '#475569',
                         font: { family: 'JetBrains Mono', size: 10, weight: '600' }
                     }
                 }
             }
-        }
+        },
+        // --- NEW: PLUGIN TO DRAW THE "NOW" VERTICAL LINE ---
+        plugins: [{
+            id: 'verticalLine',
+            afterDraw: (chart) => {
+                if (offset === 0 && chart.scales.x) {
+                    const xCoor = chart.scales.x.getPixelForValue(labels[currentHour]);
+                    const yTop = chart.scales.y.top;
+                    const yBottom = chart.scales.y.bottom;
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.setLineDash([5, 5]);
+                    ctx.moveTo(xCoor, yTop);
+                    ctx.lineTo(xCoor, yBottom);
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                    ctx.stroke();
+
+                    // Optional: "NOW" label
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                    ctx.font = 'bold 10px Inter';
+                    ctx.fillText('NOW', xCoor - 10, yTop - 5);
+                    ctx.restore();
+                }
+            }
+        }]
     });
 }
 
