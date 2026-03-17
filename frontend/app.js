@@ -161,7 +161,7 @@ function renderDay(offset) {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() - offset);
 
-    // FIX: Array size 25 to include both 12 AM points (start and end)
+    // Array size 25 ensures we have a slot for the final 12 AM anchor
     const dayData = new Array(25).fill(null);
     let totalMoisture = 0;
     let count = 0;
@@ -176,10 +176,6 @@ function renderDay(offset) {
             dayData[hour] = point.avg_moisture;
             totalMoisture += point.avg_moisture;
             count++;
-
-            // FIX: If data exists for the first hour of the next day, 
-            // we'd need it here for the 25th point, but for now, we'll let 
-            // tension.04 bridge the gap to the right edge.
         }
     });
 
@@ -200,22 +196,10 @@ function renderDay(offset) {
     const canvas = document.getElementById('mainChart');
     const ctx = canvas.getContext('2d');
 
-    // --- PIXEL-PERFECT CONDITIONAL SHADING ---
-    // We get the exact pixel height of the chart to calculate the threshold stop
-    const chartHeight = canvas.clientHeight;
-    const fillGradient = ctx.createLinearGradient(0, 0, 0, chartHeight);
-
-    // Threshold is 20%. In Chart.js coordinate system (0 is top), 
-    // 20% moisture is 80% down from the top.
-    const thresholdPercentage = 0.8;
-
-    // Emerald Green Zone
-    fillGradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
-    fillGradient.addColorStop(thresholdPercentage, 'rgba(16, 185, 129, 0.2)');
-
-    // Hard switch to Red Zone
-    fillGradient.addColorStop(thresholdPercentage, 'rgba(239, 68, 68, 0.4)');
-    fillGradient.addColorStop(1, 'rgba(239, 68, 68, 0.4)');
+    // Restore the clean Emerald Gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
+    gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
 
     const currentHour = new Date().getHours();
 
@@ -229,10 +213,10 @@ function renderDay(offset) {
                     data: dayData,
                     borderColor: '#10b981',
                     borderWidth: 4,
-                    backgroundColor: fillGradient,
+                    backgroundColor: gradient,
                     fill: true,
                     tension: 0.4,
-                    spanGaps: true, // This helps the line reach the 12 AM mark
+                    spanGaps: true,
                     pointRadius: 0,
                     order: 0
                 },
@@ -280,7 +264,6 @@ function renderDay(offset) {
                     ticks: {
                         color: '#475569',
                         font: { family: 'JetBrains Mono', size: 10, weight: '600' },
-                        // Ensures the last label doesn't get cut off
                         maxRotation: 0,
                         autoSkip: true,
                         maxTicksLimit: 12
@@ -309,8 +292,7 @@ function renderDay(offset) {
             }
         }]
     });
-}
-// --- ARROW BUTTON EVENT LISTENERS ---
+}// --- ARROW BUTTON EVENT LISTENERS ---
 document.getElementById('btn-prev-day').addEventListener('click', () => {
     if (currentDayOffset < 2) {
         currentDayOffset++;
@@ -508,7 +490,6 @@ function renderModalDay(offset) {
         }
     });
 }
-
 // Modal Arrow Button Listeners
 document.getElementById('btn-modal-prev').addEventListener('click', () => {
     if (currentModalOffset < 2) {
