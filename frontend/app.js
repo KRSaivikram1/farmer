@@ -158,22 +158,18 @@ function renderChart(data) {
 }
 
 function renderDay(offset) {
-    // 1. Figure out which calendar day we are looking at
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() - offset);
 
-    // 2. Create a blank 24-hour array (12 AM to 11 PM) filled with 'null'
     const dayData = new Array(25).fill(null);
     let totalMoisture = 0;
     let count = 0;
 
-    // 3. Loop through all 72 hours of data from the backend. 
     globalChartData.forEach(point => {
         const ptDate = new Date(point.timestamp + (point.timestamp.endsWith('Z') ? '' : 'Z'));
         if (ptDate.getDate() === targetDate.getDate() &&
             ptDate.getMonth() === targetDate.getMonth() &&
             ptDate.getFullYear() === targetDate.getFullYear()) {
-
             const hour = ptDate.getHours();
             dayData[hour] = point.avg_moisture;
             totalMoisture += point.avg_moisture;
@@ -181,31 +177,33 @@ function renderDay(offset) {
         }
     });
 
-    // 4. Update the Daily Average Text
     const avgText = count > 0 ? Math.round(totalMoisture / count) + "%" : "--%";
     document.getElementById('chart-daily-avg').innerText = avgText;
 
-    // 5. Update the Emerald Date Label text
     const labelEl = document.getElementById('chart-date-label');
     if (offset === 0) labelEl.innerText = "Today";
     else if (offset === 1) labelEl.innerText = "Yesterday";
     else labelEl.innerText = targetDate.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 
-    // 6. Show or Hide navigation arrows
     document.getElementById('btn-next-day').style.display = offset === 0 ? 'none' : 'block';
     document.getElementById('btn-prev-day').style.display = offset >= 2 ? 'none' : 'block';
 
-    // 7. Draw the fixed 24-hour chart
     const labels = ['12 AM', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM', '12 AM'];
 
     if (mainChartInstance) mainChartInstance.destroy();
-    const ctx = document.getElementById('mainChart').getContext('2d');
+    const canvas = document.getElementById('mainChart');
+    const ctx = canvas.getContext('2d');
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
-    gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+    // --- ENHANCED CONDITIONAL FILL ---
+    const fillGradient = ctx.createLinearGradient(0, 0, 0, 400);
 
-    // LOGIC: Determine current hour for the vertical line if offset is 0
+    // 20% threshold is 80% down from the top of a 0-100 scale
+    const stop = 0.8;
+    fillGradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');   // Emerald
+    fillGradient.addColorStop(stop, 'rgba(16, 185, 129, 0.2)');// Emerald down to 20
+    fillGradient.addColorStop(stop, 'rgba(239, 68, 68, 0.4)'); // Red at 20
+    fillGradient.addColorStop(1, 'rgba(239, 68, 68, 0.4)');    // Red to bottom
+
     const currentHour = new Date().getHours();
 
     mainChartInstance = new Chart(ctx, {
@@ -218,7 +216,7 @@ function renderDay(offset) {
                     data: dayData,
                     borderColor: '#10b981',
                     borderWidth: 4,
-                    backgroundColor: gradient,
+                    backgroundColor: fillGradient,
                     fill: true,
                     tension: 0.4,
                     spanGaps: true,
@@ -227,7 +225,7 @@ function renderDay(offset) {
                 },
                 {
                     label: 'Threshold',
-                    data: new Array(25).fill(20), //
+                    data: new Array(25).fill(20),
                     borderColor: 'rgba(239, 68, 68, 0.4)',
                     borderWidth: 2,
                     borderDash: [5, 5],
@@ -240,10 +238,7 @@ function renderDay(offset) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index',
-            },
+            interaction: { intersect: false, mode: 'index' },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -255,9 +250,12 @@ function renderDay(offset) {
                     padding: 12,
                     cornerRadius: 8,
                     displayColors: false,
+                    filter: function (tooltipItem) {
+                        // FIX: Do not show the Threshold dataset in the tooltip
+                        return tooltipItem.dataset.label !== 'Threshold';
+                    },
                     callbacks: {
                         label: function (context) {
-                            if (context.dataset.label === 'Threshold') return ' THRESHOLD: 20%';
                             return `${context.parsed.y}% MOISTURE`;
                         }
                     }
@@ -265,54 +263,38 @@ function renderDay(offset) {
             },
             scales: {
                 y: {
-                    min: 0,
-                    max: 100,
+                    min: 0, max: 100,
                     grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
-                    ticks: {
-                        color: '#475569',
-                        font: { family: 'JetBrains Mono', size: 10, weight: '600' }
-                    }
+                    ticks: { color: '#475569', font: { family: 'JetBrains Mono', size: 10, weight: '600' } }
                 },
                 x: {
                     grid: { display: false },
-                    ticks: {
-                        maxTicksLimit: 7,
-                        maxRotation: 0,
-                        color: '#475569',
-                        font: { family: 'JetBrains Mono', size: 10, weight: '600' }
-                    }
+                    ticks: { maxTicksLimit: 7, color: '#475569', font: { family: 'JetBrains Mono', size: 10, weight: '600' } }
                 }
             }
         },
-        // --- NEW: PLUGIN TO DRAW THE "NOW" VERTICAL LINE ---
         plugins: [{
             id: 'verticalLine',
             afterDraw: (chart) => {
                 if (offset === 0 && chart.scales.x) {
                     const xCoor = chart.scales.x.getPixelForValue(labels[currentHour]);
-                    const yTop = chart.scales.y.top;
-                    const yBottom = chart.scales.y.bottom;
-
                     ctx.save();
                     ctx.beginPath();
                     ctx.setLineDash([5, 5]);
-                    ctx.moveTo(xCoor, yTop);
-                    ctx.lineTo(xCoor, yBottom);
+                    ctx.moveTo(xCoor, chart.scales.y.top);
+                    ctx.lineTo(xCoor, chart.scales.y.bottom);
                     ctx.lineWidth = 2;
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
                     ctx.stroke();
-
-                    // Optional: "NOW" label
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
                     ctx.font = 'bold 10px Inter';
-                    ctx.fillText('NOW', xCoor - 10, yTop - 5);
+                    ctx.fillText('NOW', xCoor - 10, chart.scales.y.top - 5);
                     ctx.restore();
                 }
             }
         }]
     });
 }
-
 // --- ARROW BUTTON EVENT LISTENERS ---
 document.getElementById('btn-prev-day').addEventListener('click', () => {
     if (currentDayOffset < 2) {
@@ -406,7 +388,6 @@ function renderModalDay(offset) {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() - offset);
 
-    // Arrays to hold the math for grouping raw readings into hourly averages
     const hourlySums = new Array(25).fill(0);
     const hourlyCounts = new Array(25).fill(0);
     let totalMoisture = 0;
@@ -417,25 +398,19 @@ function renderModalDay(offset) {
         if (ptDate.getDate() === targetDate.getDate() &&
             ptDate.getMonth() === targetDate.getMonth() &&
             ptDate.getFullYear() === targetDate.getFullYear()) {
-
             const hour = ptDate.getHours();
             hourlySums[hour] += point.moisture_pct;
             hourlyCounts[hour]++;
-
             totalMoisture += point.moisture_pct;
             count++;
         }
     });
 
-    // Calculate the final average for each hour
     const dayData = new Array(25).fill(null);
     for (let i = 0; i < 25; i++) {
-        if (hourlyCounts[i] > 0) {
-            dayData[i] = hourlySums[i] / hourlyCounts[i];
-        }
+        if (hourlyCounts[i] > 0) dayData[i] = hourlySums[i] / hourlyCounts[i];
     }
 
-    // Update Modal UI Labels
     const avgText = count > 0 ? Math.round(totalMoisture / count) + "%" : "--%";
     document.getElementById('modal-daily-avg').innerText = avgText;
 
@@ -444,15 +419,13 @@ function renderModalDay(offset) {
     else if (offset === 1) labelEl.innerText = "Yesterday";
     else labelEl.innerText = targetDate.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 
-    // Arrow Visibility
     document.getElementById('btn-modal-next').style.display = offset === 0 ? 'none' : 'block';
     document.getElementById('btn-modal-prev').style.display = offset >= 2 ? 'none' : 'block';
 
-    // Draw the Modal Chart
     const labels = ['12 AM', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM', '12 AM'];
 
     const ctx = document.getElementById('modalChart');
-    if (!ctx) return; // Safety check
+    if (!ctx) return;
 
     if (modalChartInstance) modalChartInstance.destroy();
 
@@ -486,10 +459,7 @@ function renderModalDay(offset) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index',
-            },
+            interaction: { intersect: false, mode: 'index' },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -501,6 +471,7 @@ function renderModalDay(offset) {
                     padding: 12,
                     cornerRadius: 8,
                     displayColors: false,
+                    // Keep the tooltips here simple too
                     callbacks: {
                         label: function (context) {
                             return `${context.parsed.y}% MOISTURE`;
@@ -516,12 +487,7 @@ function renderModalDay(offset) {
                 },
                 x: {
                     grid: { display: false },
-                    ticks: {
-                        maxTicksLimit: 7,
-                        maxRotation: 0,
-                        color: '#475569',
-                        font: { family: 'DM Mono', size: 10 }
-                    }
+                    ticks: { maxTicksLimit: 7, color: '#475569', font: { family: 'DM Mono', size: 10 } }
                 }
             }
         }
