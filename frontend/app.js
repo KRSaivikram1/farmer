@@ -311,7 +311,7 @@ function renderDay(offset) {
                     ctx.stroke();
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
                     ctx.font = 'bold 10px Inter';
-                    ctx.fillText('NOW', xCoor - 10, chart.scales.y.top + 15);
+                    ctx.fillText('NOW', xCoor - 8, chart.scales.y.top + 12);
                     ctx.restore();
                 }
             }
