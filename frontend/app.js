@@ -252,6 +252,14 @@ function renderDay(offset) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    top: 25,    // More space for the "NOW" label
+                    bottom: 10,
+                    left: 10,
+                    right: 10
+                }
+            },
             interaction: { intersect: false, mode: 'index' },
             plugins: {
                 legend: { display: false },
@@ -303,7 +311,7 @@ function renderDay(offset) {
                     ctx.stroke();
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
                     ctx.font = 'bold 10px Inter';
-                    ctx.fillText('NOW', xCoor - 10, chart.scales.y.top - 5);
+                    ctx.fillText('NOW', xCoor - 10, chart.scales.y.top + 15);
                     ctx.restore();
                 }
             }
@@ -495,6 +503,14 @@ function renderModalDay(offset) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    top: 25,    // More space for the "NOW" label
+                    bottom: 10,
+                    left: 10,
+                    right: 10
+                }
+            },
             interaction: { intersect: false, mode: 'index' },
             plugins: {
                 legend: { display: false },
