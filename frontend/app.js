@@ -77,71 +77,70 @@ function renderWidget(sensor, container) {
     const moisture = sensor.moisture_pct;
     const timestamp = sensor.last_reading_time || sensor.last_seen || null;
 
-    // Status Logic (Back to 20% Threshold)
+    // 1. Threshold logic for Moisture (20%)
     let themeColor = moisture <= 20 ? "red" : "emerald";
     let statusLabel = moisture <= 20 ? "CRITICAL" : "HEALTHY";
 
+    // 2. NEW: Heartbeat Logic (12 Hours)
     let timeLabel = "---";
-    let isOffline = false;
+    let heartbeatClass = "text-slate-400"; // Default healthy color
+
     if (timestamp) {
-        const tsString = timestamp.endsWith('Z') ? timestamp : timestamp + 'Z';
-        const diff = Math.floor((new Date() - new Date(tsString)) / (1000 * 60));
+        const lastSeenDate = new Date(timestamp + (timestamp.endsWith('Z') ? '' : 'Z'));
+        const diffInMs = new Date() - lastSeenDate;
+        const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+        const diffInHours = Math.floor(diffInMinutes / 60);
 
-        if (diff < 1) timeLabel = "Just now";
-        else if (diff < 60) timeLabel = `${diff}m ago`;
-        else if (diff < 1440) timeLabel = `${Math.floor(diff / 60)}h ago`;
-        else timeLabel = `${Math.floor(diff / 1440)}d ago`;
+        // Formatting the label
+        timeLabel = diffInHours >= 1 ? `${diffInHours}h ago` : `${diffInMinutes}m ago`;
 
-        // Offline detection: no data for 60+ minutes
-        if (diff >= 60) {
-            isOffline = true;
-            // Only override to OFFLINE if not already CRITICAL (moisture alarm takes priority)
-            if (statusLabel !== "CRITICAL") {
-                themeColor = "amber";
-                statusLabel = "OFFLINE";
-            }
+        // TRIGGER: If older than 12 hours, turn the text Red and add weight
+        if (diffInHours >= 12) {
+            heartbeatClass = "text-red-500 font-black animate-pulse";
+            statusLabel = "OFFLINE"; // Optional: Override status for business clarity
         }
     }
 
-    const colorHex = themeColor === 'red' ? '#ef4444' : themeColor === 'amber' ? '#f59e0b' : '#10b981';
+    const colorHex = themeColor === 'red' ? '#ef4444' : '#10b981';
 
-    // Inside renderWidget(sensor, container)
     container.innerHTML += `
-    <div onclick="openModal('${sensor.device_eui}', '${sensor.name || "Field"}')" 
-         class="custom-card rounded-2xl p-6 transition-all duration-500 cursor-pointer border border-white/5 hover:border-${themeColor}-500/40 relative overflow-hidden">
-        
-        <div class="flex justify-between items-start mb-6">
-            <h4 class="font-syne text-white text-xl uppercase">${sensor.name || "Field"}</h4>
-            <span class="px-2 py-0.5 text-[9px] font-black rounded-sm border border-${themeColor}-500/30 text-${themeColor}-500 tracking-widest uppercase">${statusLabel}</span>
-        </div>
+        <div onclick="openModal('${sensor.device_eui}', '${sensor.name || "Field"}')" 
+             class="custom-card rounded-2xl p-6 transition-all duration-500 cursor-pointer border border-white/5 hover:border-${themeColor}-500/40 relative overflow-hidden">
+            
+            <div class="flex justify-between items-start mb-6">
+                <h4 class="font-syne text-white text-xl uppercase">${sensor.name || "Field"}</h4>
+                <span class="px-2 py-0.5 text-[9px] font-black rounded-sm border border-${themeColor}-500/30 text-${themeColor}-500 tracking-widest uppercase">
+                    ${statusLabel}
+                </span>
+            </div>
 
-        <div class="relative flex items-center justify-center mb-4">
-            <div class="flex items-baseline gap-1">
-                <span class="text-6xl font-mono tracking-tighter text-white">${moisture}</span>
-                <span class="text-xl font-bold text-slate-700 font-mono">%</span>
+            <div class="relative flex items-center justify-center mb-4">
+                <div class="flex items-baseline gap-1">
+                    <span class="text-6xl font-mono tracking-tighter text-white">${moisture}</span>
+                    <span class="text-xl font-bold text-slate-700 font-mono">%</span>
+                </div>
             </div>
-        </div>
 
-        <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-6">
-            <div class="h-full bg-${themeColor}-500 shadow-[0_0_10px_${colorHex}]" style="width: ${moisture}%"></div>
-        </div>
+            <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-6">
+                <div class="h-full bg-${themeColor}-500 shadow-[0_0_10px_${colorHex}]" style="width: ${moisture}%"></div>
+            </div>
 
-        <div class="grid grid-cols-3 pt-4 border-t border-white/5">
-            <div>
-                <p class="text-[8px] text-slate-600 font-black uppercase font-syne">Temp</p>
-                <p class="text-xs font-bold text-slate-300 font-mono">${sensor.temperature_c}°C</p>
-            </div>
-            <div>
-                <p class="text-[8px] text-slate-600 font-black uppercase font-syne">Battery</p>
-                <p class="text-xs font-bold text-slate-300 font-mono">${sensor.battery_volts}V</p>
-            </div>
-            <div class="text-right">
-                <p class="text-[8px] text-slate-600 font-black uppercase font-syne">Last Seen</p>
-                <p class="text-xs font-bold text-slate-400 font-mono">${timeLabel}</p>
+            <div class="grid grid-cols-3 pt-4 border-t border-white/5">
+                <div>
+                    <p class="text-[8px] text-slate-600 font-black uppercase font-syne">Temp</p>
+                    <p class="text-xs font-bold text-slate-300 font-mono">${sensor.temperature_c}°C</p>
+                </div>
+                <div>
+                    <p class="text-[8px] text-slate-600 font-black uppercase font-syne">Battery</p>
+                    <p class="text-xs font-bold text-slate-300 font-mono">${sensor.battery_volts}V</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[8px] text-slate-600 font-black uppercase font-syne">Last Seen</p>
+                    <p class="text-xs font-bold font-mono ${heartbeatClass}">${timeLabel}</p>
+                </div>
             </div>
         </div>
-    </div>
-`;
+    `;
 }
 
 // --- MAIN CHART & PAGINATION LOGIC ---
