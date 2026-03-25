@@ -112,17 +112,19 @@
 
                 <div class="relative flex-grow h-full">
                     <button id="btn-prev-day"
-                        class="absolute left-2 top-[45%] -translate-y-1/2 z-10 bg-white/5 hover:bg-white/10 p-3 rounded-xl text-slate-400 transition">
+                        class="absolute -left-12 top-1/2 -translate-y-1/2 z-10 bg-white/5 hover:bg-white/10 p-3 rounded-xl text-slate-400 transition">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7">
                             </path>
                         </svg>
                     </button>
+
                     <div class="w-full h-full px-4">
                         <canvas id="mainChart"></canvas>
                     </div>
+
                     <button id="btn-next-day"
-                        class="absolute right-2 top-[45%] -translate-y-1/2 z-10 bg-white/5 hover:bg-white/10 p-3 rounded-xl text-slate-400 transition">
+                        class="absolute -right-12 top-1/2 -translate-y-1/2 z-10 bg-white/5 hover:bg-white/10 p-3 rounded-xl text-slate-400 transition">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7">
                             </path>
@@ -158,8 +160,8 @@
                     </p>
                 </div>
                 <div class="text-right">
-                    <p id="modal-date-label"
-                        class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1">Today</p>
+                    <p id="modal-date-label" class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-1">
+                        Today</p>
                     <p id="modal-daily-avg" class="text-5xl font-mono font-black text-white tracking-tighter">--%</p>
                 </div>
             </div>
