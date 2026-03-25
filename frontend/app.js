@@ -105,44 +105,43 @@ function renderWidget(sensor, container) {
 
     const colorHex = themeColor === 'red' ? '#ef4444' : themeColor === 'amber' ? '#f59e0b' : '#10b981';
 
+    // Inside renderWidget(sensor, container)
     container.innerHTML += `
-        <div onclick="openModal('${sensor.device_eui}', '${sensor.name || "Field"}')" 
-             class="custom-card rounded-2xl p-6 transition-all duration-500 cursor-pointer border border-white/5 hover:border-${themeColor}-500/40 relative overflow-hidden">
-            
-            <div class="flex justify-between items-start mb-6">
-                <h4 class="text-white text-xl font-bold uppercase">${sensor.name || "Field"}</h4>
-                <span class="px-2 py-0.5 text-[9px] font-black rounded-sm border border-${themeColor}-500/30 text-${themeColor}-500 tracking-widest">
-                    ${statusLabel}
-                </span>
-            </div>
+    <div onclick="openModal('${sensor.device_eui}', '${sensor.name || "Field"}')" 
+         class="custom-card rounded-2xl p-6 transition-all duration-500 cursor-pointer border border-white/5 hover:border-${themeColor}-500/40 relative overflow-hidden">
+        
+        <div class="flex justify-between items-start mb-6">
+            <h4 class="font-syne text-white text-xl uppercase">${sensor.name || "Field"}</h4>
+            <span class="px-2 py-0.5 text-[9px] font-black rounded-sm border border-${themeColor}-500/30 text-${themeColor}-500 tracking-widest uppercase">${statusLabel}</span>
+        </div>
 
-            <div class="mb-4">
-                <div class="flex items-baseline gap-1">
-                    <span class="text-6xl font-mono tracking-tighter text-white">${moisture}</span>
-                    <span class="text-xl font-bold text-slate-700">%</span>
-                </div>
-            </div>
-
-            <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-6">
-                <div class="h-full bg-${themeColor}-500 shadow-[0_0_10px_${colorHex}]" style="width: ${moisture}%"></div>
-            </div>
-
-            <div class="grid grid-cols-3 pt-4 border-t border-white/5">
-                <div>
-                    <p class="text-[8px] text-slate-600 font-black uppercase">Temp</p>
-                    <p class="text-xs font-bold text-slate-300 font-mono">${sensor.temperature_c}°C</p>
-                </div>
-                <div>
-                    <p class="text-[8px] text-slate-600 font-black uppercase">Battery</p>
-                    <p class="text-xs font-bold text-slate-300 font-mono">${sensor.battery_volts}V</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-[8px] text-slate-600 font-black uppercase">Last Seen</p>
-                    <p class="text-xs font-bold text-slate-400 font-mono">${timeLabel}</p>
-                </div>
+        <div class="relative flex items-center justify-center mb-4">
+            <div class="flex items-baseline gap-1">
+                <span class="text-6xl font-mono tracking-tighter text-white">${moisture}</span>
+                <span class="text-xl font-bold text-slate-700 font-mono">%</span>
             </div>
         </div>
-    `;
+
+        <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-6">
+            <div class="h-full bg-${themeColor}-500 shadow-[0_0_10px_${colorHex}]" style="width: ${moisture}%"></div>
+        </div>
+
+        <div class="grid grid-cols-3 pt-4 border-t border-white/5">
+            <div>
+                <p class="text-[8px] text-slate-600 font-black uppercase font-syne">Temp</p>
+                <p class="text-xs font-bold text-slate-300 font-mono">${sensor.temperature_c}°C</p>
+            </div>
+            <div>
+                <p class="text-[8px] text-slate-600 font-black uppercase font-syne">Battery</p>
+                <p class="text-xs font-bold text-slate-300 font-mono">${sensor.battery_volts}V</p>
+            </div>
+            <div class="text-right">
+                <p class="text-[8px] text-slate-600 font-black uppercase font-syne">Last Seen</p>
+                <p class="text-xs font-bold text-slate-400 font-mono">${timeLabel}</p>
+            </div>
+        </div>
+    </div>
+`;
 }
 
 // --- MAIN CHART & PAGINATION LOGIC ---
