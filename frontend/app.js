@@ -309,7 +309,7 @@ function renderDay(offset) {
                     ctx.stroke();
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
                     ctx.font = 'bold 10px Inter';
-                    ctx.fillText('NOW', xCoor - 10, chart.scales.y.top + 5);
+                    ctx.fillText('NOW', xCoor - 11.5, chart.scales.y.top + 5);
                     ctx.restore();
                 }
             }
@@ -476,6 +476,9 @@ function renderModalDay(offset) {
     blueGradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
     blueGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
 
+    // 1. ADD THIS: Get the current hour to know where to draw the line
+    const currentHour = new Date().getHours();
+
     modalChartInstance = new Chart(context, {
         type: 'line',
         data: {
@@ -483,7 +486,7 @@ function renderModalDay(offset) {
             datasets: [{
                 label: 'Moisture (%)',
                 data: dayData,
-                borderColor: '#3b82f6',
+                borderColor: '#3b82f6', // The blue color for individual sensors
                 borderWidth: 4,
                 backgroundColor: blueGradient,
                 fill: true,
@@ -503,13 +506,16 @@ function renderModalDay(offset) {
             maintainAspectRatio: false,
             layout: {
                 padding: {
-                    top: 25,    // More space for the "NOW" label
+                    top: 25, // Ensuring the text has room, just like the main chart
                     bottom: 10,
                     left: 10,
                     right: 10
                 }
             },
-            interaction: { intersect: false, mode: 'index' },
+            interaction: {
+                intersect: false,
+                mode: 'index',
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -521,7 +527,6 @@ function renderModalDay(offset) {
                     padding: 12,
                     cornerRadius: 8,
                     displayColors: false,
-                    // Keep the tooltips here simple too
                     callbacks: {
                         label: function (context) {
                             return `${context.parsed.y}% MOISTURE`;
@@ -537,10 +542,40 @@ function renderModalDay(offset) {
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { maxTicksLimit: 7, color: '#475569', font: { family: 'DM Mono', size: 10 } }
+                    ticks: {
+                        maxTicksLimit: 12,
+                        maxRotation: 0,
+                        autoSkip: true,
+                        color: '#475569',
+                        font: { family: 'DM Mono', size: 10 }
+                    }
                 }
             }
-        }
+        },
+        // 2. ADD THIS: The exact same plugin from the main chart
+        plugins: [{
+            id: 'verticalLine',
+            afterDraw: (chart) => {
+                // Only draw the "NOW" line if we are looking at "Today" (offset === 0)
+                if (offset === 0 && chart.scales.x) {
+                    const xCoor = chart.scales.x.getPixelForValue(labels[currentHour]);
+                    context.save();
+                    context.beginPath();
+                    context.setLineDash([5, 5]);
+                    context.moveTo(xCoor, chart.scales.y.top);
+                    context.lineTo(xCoor, chart.scales.y.bottom);
+                    context.lineWidth = 2;
+                    context.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                    context.stroke();
+
+                    context.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                    context.font = 'bold 10px Inter';
+                    // Sits perfectly in that 25px top padding we added earlier
+                    context.fillText('NOW', xCoor - 11, chart.scales.y.top + 8);
+                    context.restore();
+                }
+            }
+        }]
     });
 }
 // Modal Arrow Button Listeners
