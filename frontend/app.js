@@ -23,29 +23,23 @@ async function fetchAllData() {
 
         const sensorsData = await dashResponse.json();
 
-        // 2. Clear the "Loading" text and prepare the math
+        // 2. Clear the "Loading" text and render the individual widgets
         const container = document.getElementById('sensor-widgets-container');
         container.innerHTML = "";
-        let totalMoisture = 0;
 
-        // 3. Loop through every sensor in the database
         sensorsData.forEach(sensor => {
-            totalMoisture += sensor.moisture_pct;
             renderWidget(sensor, container); // Add a widget for this sensor
         });
 
-        // 4. Calculate the real Farm-Wide Average
-        if (sensorsData.length > 0) {
-            const avg = totalMoisture / sensorsData.length;
-            updateAverage(avg);
+        // 3. ENTERPRISE LOGIC: Update the Main Hero Dashboard
+        updateGlobalDashboard(sensorsData);
 
-            // 5. Fetch the 24-Hour Farm Average Trend
+        // 4. Fetch the 24-Hour Farm Average Trend
+        if (sensorsData.length > 0) {
             const chartResponse = await fetch(`${BASE_URL}/dashboard/chart`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const chartData = await chartResponse.json();
-
-            // Pass the perfectly formatted 24-hour data straight to the chart!
             renderChart(chartData);
         }
 
@@ -54,36 +48,100 @@ async function fetchAllData() {
     }
 }
 
-function updateAverage(value) {
-    const element = document.getElementById('farm-avg');
-    const badge = document.getElementById('hero-status-badge');
-    const roundedValue = Math.round(value);
+// ==========================================
+// ENTERPRISE GLOBAL DASHBOARD LOGIC
+// ==========================================
+function updateGlobalDashboard(sensors) {
+    if (!sensors || sensors.length === 0) return;
 
-    element.innerText = roundedValue;
-    element.className = "font-mono tracking-tighter ";
+    const now = new Date();
+    const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
-    if (roundedValue <= 20) {
-        element.classList.add('text-red-500');
-        badge.className = "px-3 py-1 text-[10px] font-black rounded-full uppercase tracking-widest bg-red-500/10 text-red-500 animate-pulse";
-        badge.innerText = "CRITICAL: BELOW 20%";
-    } else {
-        element.classList.add('text-emerald-500');
-        badge.className = "px-3 py-1 text-[10px] font-black rounded-full uppercase tracking-widest bg-emerald-500/10 text-emerald-500";
-        badge.innerText = "SYSTEM HEALTHY";
+    let activeSensors = [];
+    let totalValidSensors = sensors.length;
+
+    // 1. FILTER: Isolate only the fresh data (< 4 Hours)
+    sensors.forEach(sensor => {
+        const timestamp = sensor.last_reading_time || sensor.last_seen;
+        if (timestamp) {
+            const lastSeen = new Date(timestamp + (timestamp.endsWith('Z') ? '' : 'Z'));
+            const diffMs = now - lastSeen;
+
+            // Must be under 4 hours AND have a valid number
+            if (diffMs <= FOUR_HOURS_MS && typeof sensor.moisture_pct === 'number') {
+                activeSensors.push(sensor);
+            }
+        }
+    });
+
+    const activeCount = activeSensors.length;
+
+    // 2. DOM Elements
+    const statusEl = document.getElementById('global-status');
+    const avgValueEl = document.getElementById('global-avg-value');
+    const avgSymbolEl = document.getElementById('global-avg-symbol');
+    const countEl = document.getElementById('global-sensor-count');
+
+    // STATE C: TOTAL BLACKOUT (0 Sensors Active)
+    if (activeCount === 0) {
+        statusEl.innerText = "SYSTEM OFFLINE";
+        statusEl.className = "text-sm font-bold tracking-widest uppercase mb-4 text-red-500 animate-pulse font-syne";
+
+        avgValueEl.innerText = "--";
+        avgValueEl.className = "text-[9rem] leading-none font-mono font-black text-slate-700 tracking-tighter transition-colors duration-500";
+        avgSymbolEl.className = "text-4xl font-bold font-mono text-slate-700 transition-colors duration-500";
+
+        countEl.innerText = `0/${totalValidSensors} SENSORS ACTIVE`;
+        countEl.className = "text-[10px] font-bold text-red-500/70 font-mono mt-6 tracking-[0.2em] uppercase";
+
+        // Change the top accent line to red
+        document.getElementById('hero-accent').className = "absolute top-0 left-0 w-full h-1.5 bg-red-500 transition-colors duration-500";
+        return;
+    }
+
+    // MATH: Calculate true average of active sensors
+    const sum = activeSensors.reduce((acc, sensor) => acc + sensor.moisture_pct, 0);
+    const trueAvg = Math.round(sum / activeCount);
+    const isCriticalMoisture = trueAvg <= 20;
+
+    // Apply the math to the UI
+    avgValueEl.innerText = trueAvg;
+    avgValueEl.className = `text-[9rem] leading-none font-mono font-black tracking-tighter transition-colors duration-500 ${isCriticalMoisture ? 'text-red-500' : 'text-white'}`;
+    avgSymbolEl.className = `text-4xl font-bold font-mono transition-colors duration-500 ${isCriticalMoisture ? 'text-red-500' : 'text-slate-500'}`;
+
+    // Change accent line color based on moisture
+    document.getElementById('hero-accent').className = `absolute top-0 left-0 w-full h-1.5 transition-colors duration-500 ${isCriticalMoisture ? 'bg-red-500' : 'bg-emerald-500'}`;
+
+    // STATE B: PARTIAL OUTAGE (Degraded)
+    if (activeCount < totalValidSensors) {
+        statusEl.innerText = isCriticalMoisture ? "DEGRADED - CRITICAL MOISTURE" : "SYSTEM DEGRADED";
+        statusEl.className = "text-sm font-bold tracking-widest uppercase mb-4 text-yellow-500 font-syne";
+
+        countEl.innerText = `${activeCount}/${totalValidSensors} SENSORS ACTIVE (BLIND SPOTS)`;
+        countEl.className = "text-[10px] font-bold text-yellow-500 font-mono mt-6 tracking-[0.2em] uppercase";
+    }
+    // STATE A: 100% ONLINE (Healthy)
+    else {
+        statusEl.innerText = isCriticalMoisture ? "CRITICAL MOISTURE" : "SYSTEM HEALTHY";
+        statusEl.className = `text-sm font-bold tracking-widest uppercase mb-4 font-syne ${isCriticalMoisture ? 'text-red-500 animate-pulse' : 'text-emerald-500'}`;
+
+        countEl.innerText = `${activeCount}/${totalValidSensors} SENSORS ACTIVE`;
+        countEl.className = "text-[10px] font-bold text-slate-500 font-mono mt-6 tracking-[0.2em] uppercase";
     }
 }
 
+// ==========================================
+// WIDGET RENDERING
+// ==========================================
 function renderWidget(sensor, container) {
     const moisture = sensor.moisture_pct;
     const timestamp = sensor.last_reading_time || sensor.last_seen || null;
 
-    // 1. Threshold logic for Moisture (20%)
     let themeColor = moisture <= 20 ? "red" : "emerald";
     let statusLabel = moisture <= 20 ? "CRITICAL" : "HEALTHY";
 
-    // 2. NEW: Heartbeat Logic (12 Hours)
     let timeLabel = "---";
-    let heartbeatClass = "text-slate-400"; // Default healthy color
+    let heartbeatClass = "text-slate-400";
 
     if (timestamp) {
         const lastSeenDate = new Date(timestamp + (timestamp.endsWith('Z') ? '' : 'Z'));
@@ -91,13 +149,11 @@ function renderWidget(sensor, container) {
         const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
         const diffInHours = Math.floor(diffInMinutes / 60);
 
-        // Formatting the label
         timeLabel = diffInHours >= 1 ? `${diffInHours}h ago` : `${diffInMinutes}m ago`;
 
-        // TRIGGER: If older than 12 hours, turn the text Red and add weight
         if (diffInHours >= 12) {
             heartbeatClass = "text-red-500 font-black animate-pulse";
-            statusLabel = "OFFLINE"; // Optional: Override status for business clarity
+            statusLabel = "OFFLINE";
         }
     }
 
@@ -143,15 +199,16 @@ function renderWidget(sensor, container) {
     `;
 }
 
-// --- MAIN CHART & PAGINATION LOGIC ---
+// ==========================================
+// MAIN CHART & PAGINATION LOGIC
+// ==========================================
 let globalChartData = [];
-let currentDayOffset = 0; // 0 = Today, 1 = Yesterday, 2 = Two days ago
+let currentDayOffset = 0;
 let mainChartInstance = null;
 
-// This replaces the old renderChart. It saves the data globally, then draws "Today"
 function renderChart(data) {
     globalChartData = data;
-    currentDayOffset = 0; // Always start on Today after a refresh
+    currentDayOffset = 0;
     renderDay(currentDayOffset);
 }
 
@@ -159,7 +216,6 @@ function renderDay(offset) {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() - offset);
 
-    // Array size 25 ensures we have a slot for the final 12 AM anchor
     const dayData = new Array(25).fill(null);
     let totalMoisture = 0;
     let count = 0;
@@ -167,7 +223,6 @@ function renderDay(offset) {
     globalChartData.forEach(point => {
         const ptDate = new Date(point.timestamp + (point.timestamp.endsWith('Z') ? '' : 'Z'));
 
-        // Existing logic for current day
         if (ptDate.getDate() === targetDate.getDate() &&
             ptDate.getMonth() === targetDate.getMonth() &&
             ptDate.getFullYear() === targetDate.getFullYear()) {
@@ -178,18 +233,15 @@ function renderDay(offset) {
             count++;
         }
 
-        // --- NEW FIX: PEAK AT THE START OF THE NEXT DAY ---
-        // This finds the midnight reading of the FOLLOWING day to close the graph
         const nextDay = new Date(targetDate);
         nextDay.setDate(targetDate.getDate() + 1);
 
         if (ptDate.getDate() === nextDay.getDate() &&
             ptDate.getHours() === 0) {
-            dayData[24] = point.avg_moisture; // Set the 25th point (12 AM end)
+            dayData[24] = point.avg_moisture;
         }
     });
 
-    // --- FALLBACK: If no "Next Day" data exists yet, bridge the gap manually ---
     if (dayData[24] === null && dayData[23] !== null) {
         dayData[24] = dayData[23];
     }
@@ -211,7 +263,6 @@ function renderDay(offset) {
     const canvas = document.getElementById('mainChart');
     const ctx = canvas.getContext('2d');
 
-    // Restore the clean Emerald Gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
     gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
@@ -252,7 +303,7 @@ function renderDay(offset) {
             maintainAspectRatio: false,
             layout: {
                 padding: {
-                    top: 25,    // More space for the "NOW" label
+                    top: 25,
                     bottom: 10,
                     left: 10,
                     right: 10
@@ -315,7 +366,8 @@ function renderDay(offset) {
             }
         }]
     });
-}// --- ARROW BUTTON EVENT LISTENERS ---
+}
+
 document.getElementById('btn-prev-day').addEventListener('click', () => {
     if (currentDayOffset < 2) {
         currentDayOffset++;
@@ -330,16 +382,12 @@ document.getElementById('btn-next-day').addEventListener('click', () => {
     }
 });
 
-// Initial Load
 // ==========================================
 // ENTERPRISE REAL-TIME WEBSOCKET CONNECTION
 // ==========================================
 function connectWebSocket() {
-    // Force WSS for Render, WS for local
     const isProd = BASE_URL.includes('onrender.com');
     const wsProtocol = isProd ? 'wss:' : 'ws:';
-
-    // Get the clean domain name (e.g., farmer-alert-api.onrender.com)
     const domain = BASE_URL.split('/')[2];
     const wsUrl = `${wsProtocol}//${domain}/ws`;
 
@@ -355,7 +403,6 @@ function connectWebSocket() {
     socket.onclose = () => setTimeout(connectWebSocket, 5000);
 }
 
-// Initial Load
 window.onload = () => {
     fetchAllData();
     connectWebSocket();
@@ -366,10 +413,9 @@ window.onload = () => {
 // ==========================================
 let modalChartInstance = null;
 let globalModalData = [];
-let currentModalOffset = 0; // 0 = Today, 1 = Yesterday
+let currentModalOffset = 0;
 
 async function openModal(device_eui, sensorName) {
-    // 1. Show the modal first
     const modal = document.getElementById('sensorModal');
     modal.classList.remove('hidden');
 
@@ -385,8 +431,6 @@ async function openModal(device_eui, sensorName) {
         globalModalData = await response.json();
         currentModalOffset = 0;
 
-        // 2. THE FIX: Wait 100ms for the browser to "render" the modal 
-        // before we try to draw the chart inside it.
         setTimeout(() => {
             renderModalDay(currentModalOffset);
         }, 100);
@@ -408,15 +452,12 @@ function renderModalDay(offset) {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() - offset);
 
-    // --- MOVE THESE TO THE TOP ---
-    // 1. Initialize the array first so it exists for the loop below
     const dayData = new Array(25).fill(null);
     const hourlySums = new Array(25).fill(0);
     const hourlyCounts = new Array(25).fill(0);
     let totalMoisture = 0;
     let count = 0;
 
-    // 2. Now run the loop (it can now find 'dayData')
     globalModalData.forEach(point => {
         const ptDate = new Date(point.timestamp + (point.timestamp.endsWith('Z') ? '' : 'Z'));
 
@@ -431,7 +472,6 @@ function renderModalDay(offset) {
             count++;
         }
 
-        // Bridge to the next day's midnight
         const nextDay = new Date(targetDate);
         nextDay.setDate(targetDate.getDate() + 1);
 
@@ -442,14 +482,12 @@ function renderModalDay(offset) {
         }
     });
 
-    // 3. Calculate final averages for indices 0-23
     for (let i = 0; i < 24; i++) {
         if (hourlyCounts[i] > 0) {
             dayData[i] = hourlySums[i] / hourlyCounts[i];
         }
     }
 
-    // 4. Fallback for the 12 AM gap
     if (dayData[24] === null && dayData[23] !== null) {
         dayData[24] = dayData[23];
     }
@@ -476,7 +514,6 @@ function renderModalDay(offset) {
     blueGradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
     blueGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
 
-    // 1. ADD THIS: Get the current hour to know where to draw the line
     const currentHour = new Date().getHours();
 
     modalChartInstance = new Chart(context, {
@@ -486,7 +523,7 @@ function renderModalDay(offset) {
             datasets: [{
                 label: 'Moisture (%)',
                 data: dayData,
-                borderColor: '#3b82f6', // The blue color for individual sensors
+                borderColor: '#3b82f6',
                 borderWidth: 4,
                 backgroundColor: blueGradient,
                 fill: true,
@@ -506,7 +543,7 @@ function renderModalDay(offset) {
             maintainAspectRatio: false,
             layout: {
                 padding: {
-                    top: 25, // Ensuring the text has room, just like the main chart
+                    top: 25,
                     bottom: 10,
                     left: 10,
                     right: 10
@@ -552,11 +589,9 @@ function renderModalDay(offset) {
                 }
             }
         },
-        // 2. ADD THIS: The exact same plugin from the main chart
         plugins: [{
             id: 'verticalLine',
             afterDraw: (chart) => {
-                // Only draw the "NOW" line if we are looking at "Today" (offset === 0)
                 if (offset === 0 && chart.scales.x) {
                     const xCoor = chart.scales.x.getPixelForValue(labels[currentHour]);
                     context.save();
@@ -570,7 +605,6 @@ function renderModalDay(offset) {
 
                     context.fillStyle = 'rgba(255, 255, 255, 0.4)';
                     context.font = 'bold 10px Inter';
-                    // Sits perfectly in that 25px top padding we added earlier
                     context.fillText('NOW', xCoor - 11, chart.scales.y.top + 8);
                     context.restore();
                 }
@@ -578,7 +612,7 @@ function renderModalDay(offset) {
         }]
     });
 }
-// Modal Arrow Button Listeners
+
 document.getElementById('btn-modal-prev').addEventListener('click', () => {
     if (currentModalOffset < 2) {
         currentModalOffset++;
