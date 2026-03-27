@@ -17,8 +17,6 @@
             background-color: #0B1215;
         }
 
-
-
         .font-mono {
             font-family: 'DM Mono', monospace;
         }
@@ -29,14 +27,14 @@
         }
 
         /* The Hero Number: Dominant and Upright */
-        #farm-avg {
+        #global-avg-value {
             font-size: 9rem;
             line-height: 1;
             letter-spacing: -0.05em;
         }
 
         @media (max-width: 640px) {
-            #farm-avg {
+            #global-avg-value {
                 font-size: 6rem;
             }
         }
@@ -75,24 +73,35 @@
     <main class="max-w-[1400px] mx-auto p-6 space-y-6">
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
             <div
                 class="lg:col-span-3 custom-card rounded-3xl p-8 flex flex-col justify-between h-[450px] relative overflow-hidden">
-                <div id="hero-accent" class="absolute top-0 left-0 w-full h-1.5 bg-slate-700"></div>
+                <div id="hero-accent"
+                    class="absolute top-0 left-0 w-full h-1.5 bg-slate-700 transition-colors duration-500"></div>
                 <div>
                     <h2 class="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] mb-1">Farm
                         Average</h2>
                     <p class="text-[10px] text-slate-600 font-bold uppercase">Threshold: 20%</p>
                 </div>
 
-                <div class="py-4 text-center">
-                    <span id="farm-avg" class="font-mono font-black text-white tracking-tighter">--</span>
-                    <span class="text-3xl font-bold text-slate-700 ml-1 font-mono">%</span>
+                <div class="py-4 text-center flex flex-col items-center justify-center relative z-10">
+                    <h2 id="global-status"
+                        class="text-sm font-bold tracking-widest uppercase mb-4 text-slate-500 font-syne">SYNCING...
+                    </h2>
+
+                    <div class="flex items-baseline justify-center gap-1">
+                        <span id="global-avg-value"
+                            class="text-[9rem] leading-none font-mono font-black text-slate-500 tracking-tighter transition-colors duration-500">--</span>
+                        <span id="global-avg-symbol"
+                            class="text-4xl font-bold font-mono text-slate-700 transition-colors duration-500">%</span>
+                    </div>
+
+                    <p id="global-sensor-count"
+                        class="text-[10px] font-bold text-slate-600 font-mono mt-6 tracking-[0.2em] uppercase">--/--
+                        SENSORS ACTIVE</p>
                 </div>
 
-                <div id="hero-badge-container" class="flex justify-center">
-                    <span id="hero-status-badge"
-                        class="px-3 py-1 bg-slate-800 text-slate-400 text-[10px] font-black rounded-full uppercase tracking-widest">Syncing...</span>
-                </div>
+                <div></div>
             </div>
 
             <div class="lg:col-span-9 custom-card rounded-3xl p-8 flex flex-col h-[450px]">

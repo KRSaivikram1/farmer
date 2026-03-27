@@ -104,17 +104,17 @@ function updateGlobalDashboard(sensors) {
     const trueAvg = Math.round(sum / activeCount);
     const isCriticalMoisture = trueAvg <= 20;
 
-    // Apply the math to the UI
+    // Apply the math to the UI (CHANGED TO ORANGE)
     avgValueEl.innerText = trueAvg;
-    avgValueEl.className = `text-[9rem] leading-none font-mono font-black tracking-tighter transition-colors duration-500 ${isCriticalMoisture ? 'text-red-500' : 'text-white'}`;
-    avgSymbolEl.className = `text-4xl font-bold font-mono transition-colors duration-500 ${isCriticalMoisture ? 'text-red-500' : 'text-slate-500'}`;
+    avgValueEl.className = `text-[9rem] leading-none font-mono font-black tracking-tighter transition-colors duration-500 ${isCriticalMoisture ? 'text-orange-500' : 'text-white'}`;
+    avgSymbolEl.className = `text-4xl font-bold font-mono transition-colors duration-500 ${isCriticalMoisture ? 'text-orange-500' : 'text-slate-500'}`;
 
     // Change accent line color based on moisture
-    document.getElementById('hero-accent').className = `absolute top-0 left-0 w-full h-1.5 transition-colors duration-500 ${isCriticalMoisture ? 'bg-red-500' : 'bg-emerald-500'}`;
+    document.getElementById('hero-accent').className = `absolute top-0 left-0 w-full h-1.5 transition-colors duration-500 ${isCriticalMoisture ? 'bg-orange-500' : 'bg-emerald-500'}`;
 
     // STATE B: PARTIAL OUTAGE (Degraded)
     if (activeCount < totalValidSensors) {
-        statusEl.innerText = isCriticalMoisture ? "DEGRADED - CRITICAL MOISTURE" : "SYSTEM DEGRADED";
+        statusEl.innerText = isCriticalMoisture ? "DEGRADED - LOW MOISTURE" : "SYSTEM DEGRADED";
         statusEl.className = "text-sm font-bold tracking-widest uppercase mb-4 text-yellow-500 font-syne";
 
         countEl.innerText = `${activeCount}/${totalValidSensors} SENSORS ACTIVE (BLIND SPOTS)`;
@@ -122,8 +122,9 @@ function updateGlobalDashboard(sensors) {
     }
     // STATE A: 100% ONLINE (Healthy)
     else {
-        statusEl.innerText = isCriticalMoisture ? "CRITICAL MOISTURE" : "SYSTEM HEALTHY";
-        statusEl.className = `text-sm font-bold tracking-widest uppercase mb-4 font-syne ${isCriticalMoisture ? 'text-red-500 animate-pulse' : 'text-emerald-500'}`;
+        // CHANGED TO ORANGE
+        statusEl.innerText = isCriticalMoisture ? "LOW MOISTURE ALERT" : "SYSTEM HEALTHY";
+        statusEl.className = `text-sm font-bold tracking-widest uppercase mb-4 font-syne ${isCriticalMoisture ? 'text-orange-500 animate-pulse' : 'text-emerald-500'}`;
 
         countEl.innerText = `${activeCount}/${totalValidSensors} SENSORS ACTIVE`;
         countEl.className = "text-[10px] font-bold text-slate-500 font-mono mt-6 tracking-[0.2em] uppercase";
@@ -137,8 +138,9 @@ function renderWidget(sensor, container) {
     const moisture = sensor.moisture_pct;
     const timestamp = sensor.last_reading_time || sensor.last_seen || null;
 
-    let themeColor = moisture <= 20 ? "red" : "emerald";
-    let statusLabel = moisture <= 20 ? "CRITICAL" : "HEALTHY";
+    // CHANGED TO ORANGE
+    let themeColor = moisture <= 20 ? "orange" : "emerald";
+    let statusLabel = moisture <= 20 ? "LOW WATER" : "HEALTHY";
 
     let timeLabel = "---";
     let heartbeatClass = "text-slate-400";
@@ -151,13 +153,16 @@ function renderWidget(sensor, container) {
 
         timeLabel = diffInHours >= 1 ? `${diffInHours}h ago` : `${diffInMinutes}m ago`;
 
+        // RED REMAINS HERE FOR HARDWARE FAILURE
         if (diffInHours >= 12) {
             heartbeatClass = "text-red-500 font-black animate-pulse";
             statusLabel = "OFFLINE";
+            themeColor = "slate"; // Optional: dim the widget if it's dead
         }
     }
 
-    const colorHex = themeColor === 'red' ? '#ef4444' : '#10b981';
+    // ADDED ORANGE HEX
+    const colorHex = themeColor === 'orange' ? '#f97316' : (themeColor === 'slate' ? '#475569' : '#10b981');
 
     container.innerHTML += `
         <div onclick="openModal('${sensor.device_eui}', '${sensor.name || "Field"}')" 
@@ -491,13 +496,36 @@ function renderModalDay(offset) {
     if (dayData[24] === null && dayData[23] !== null) {
         dayData[24] = dayData[23];
     }
-    const avgText = count > 0 ? Math.round(totalMoisture / count) + "%" : "--%";
-    document.getElementById('modal-daily-avg').innerText = avgText;
+
+    // ==========================================
+    // ENTERPRISE COLOR LOGIC FOR MODALS
+    // ==========================================
+    const trueAvg = count > 0 ? Math.round(totalMoisture / count) : null;
+    const avgText = trueAvg !== null ? trueAvg + "%" : "--";
+
+    let themeColor = "emerald";
+    let hexColor = "#10b981"; // Emerald Default
+
+    if (trueAvg === null) {
+        themeColor = "red";
+        hexColor = "#ef4444"; // Red (Total Blackout / No Data for this day)
+    } else if (trueAvg <= 20) {
+        themeColor = "orange";
+        hexColor = "#f97316"; // Orange (Low Moisture)
+    }
+
+    // Update DOM Text Colors
+    const avgEl = document.getElementById('modal-daily-avg');
+    avgEl.innerText = avgText;
+    avgEl.className = `text-5xl font-mono font-black tracking-tighter transition-colors duration-500 ${trueAvg !== null && trueAvg <= 20 ? 'text-orange-500' : 'text-white'}`;
 
     const labelEl = document.getElementById('modal-date-label');
     if (offset === 0) labelEl.innerText = "Today";
     else if (offset === 1) labelEl.innerText = "Yesterday";
     else labelEl.innerText = targetDate.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+
+    // Apply dynamic color to the date label
+    labelEl.className = `text-xs font-bold uppercase tracking-widest mb-1 font-syne text-${themeColor}-500`;
 
     document.getElementById('btn-modal-next').style.display = offset === 0 ? 'none' : 'block';
     document.getElementById('btn-modal-prev').style.display = offset >= 2 ? 'none' : 'block';
@@ -508,11 +536,20 @@ function renderModalDay(offset) {
     if (!ctx) return;
 
     if (modalChartInstance) modalChartInstance.destroy();
-
     const context = ctx.getContext('2d');
-    const blueGradient = context.createLinearGradient(0, 0, 0, 400);
-    blueGradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
-    blueGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+
+    // Helper: Convert Hex to RGBA for smooth Chart.js gradients
+    const hexToRgba = (hex, alpha) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
+    // Apply the dynamic color to the gradient
+    const dynamicGradient = context.createLinearGradient(0, 0, 0, 400);
+    dynamicGradient.addColorStop(0, hexToRgba(hexColor, 0.2));
+    dynamicGradient.addColorStop(1, hexToRgba(hexColor, 0));
 
     const currentHour = new Date().getHours();
 
@@ -523,16 +560,16 @@ function renderModalDay(offset) {
             datasets: [{
                 label: 'Moisture (%)',
                 data: dayData,
-                borderColor: '#3b82f6',
+                borderColor: hexColor, // Dynamic Line Color
                 borderWidth: 4,
-                backgroundColor: blueGradient,
+                backgroundColor: dynamicGradient, // Dynamic Gradient
                 fill: true,
                 tension: 0.4,
                 spanGaps: true,
                 pointRadius: 0,
                 pointHoverRadius: 6,
-                pointHoverBackgroundColor: '#3b82f6',
-                pointBorderColor: '#3b82f6',
+                pointHoverBackgroundColor: hexColor,
+                pointBorderColor: hexColor,
                 pointHoverBorderColor: '#fff',
                 pointHoverBorderWidth: 2,
                 pointBackgroundColor: '#0B1215'
@@ -542,12 +579,7 @@ function renderModalDay(offset) {
             responsive: true,
             maintainAspectRatio: false,
             layout: {
-                padding: {
-                    top: 25,
-                    bottom: 10,
-                    left: 10,
-                    right: 10
-                }
+                padding: { top: 25, bottom: 10, left: 10, right: 10 }
             },
             interaction: {
                 intersect: false,
