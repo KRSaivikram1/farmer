@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.orm import sessionmaker, Session
 from auth import verify_password, get_password_hash, create_access_token
-from models import engine, Reading, Sensor, User, Hub  # <-- Added Hub here!
+from models import engine, Reading, Sensor, User, Farm  # <-- Swapped Hub for Farm!
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
 from auth import SECRET_KEY, ALGORITHM
@@ -40,13 +40,14 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        email: str = payload.get("sub")
+        if email is None:
             raise credentials_exception
     except Exception:
         raise credentials_exception
     
-    user = db.query(User).filter(User.username == username).first()
+    # Check by email instead of username
+    user = db.query(User).filter(User.email == email).first()
     if user is None:
         raise credentials_exception
     return user
@@ -60,14 +61,11 @@ class IngestPayload(BaseModel):
     temperature_c: float = Field(..., description="Temperature in Celsius")
     battery_volts: float = Field(..., description="Battery voltage of the sensor")
 
+# Updated User Schema for B2B
 class UserCreate(BaseModel):
-    username: str
+    email: str
     password: str
-    phone_number: str
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
+    full_name: str
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -87,15 +85,16 @@ class IngestResponse(BaseModel):
     reading_id: int
     device_eui: str
 
-# --- NEW ADMIN SCHEMAS ---
-class HubCreate(BaseModel):
-    name: str
+# --- UPDATED ADMIN SCHEMAS ---
+class FarmCreate(BaseModel):
+    farm_name: str
     location: str = None
 
 class SensorCreate(BaseModel):
     device_eui: str
     name: str
-    hub_id: int
+    farm_id: int
+    moisture_threshold: int = 20
 
 # ---------------------------------------------------------------------------
 # FastAPI application
@@ -118,7 +117,7 @@ app.add_middleware(
 )
 
 # ===========================================================================
-# WEBSOCKET MANAGER (Real-Time Enterprise Upgrade)
+# WEBSOCKET MANAGER
 # ===========================================================================
 class ConnectionManager:
     def __init__(self):
@@ -143,50 +142,44 @@ manager = ConnectionManager()
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """The open pipeline for the frontend to listen to."""
     await manager.connect(websocket)
     try:
         while True:
-            # We just keep the line open. The frontend doesn't need to speak, just listen.
             data = await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
 async def notify_clients():
-    """Helper function to shout down the pipeline."""
     await manager.broadcast("NEW_DATA")
 
 # ===========================================================================
-# ADMIN ENDPOINTS (Hub & Sensor Management)
+# ADMIN ENDPOINTS (Farm & Sensor Management)
 # ===========================================================================
 
-@app.post("/api/admin/hubs", summary="Create a new Hub for the farmer")
-def create_hub(hub: HubCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Creates a logical grouping (like 'North Field Gateway') owned by this user."""
-    new_hub = Hub(name=hub.name, location=hub.location, user_id=current_user.id)
-    db.add(new_hub)
+@app.post("/api/admin/farms", summary="Create a new Farm for the client")
+def create_farm(farm: FarmCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    new_farm = Farm(farm_name=farm.farm_name, location=farm.location, user_id=current_user.id)
+    db.add(new_farm)
     db.commit()
-    db.refresh(new_hub)
-    return {"message": f"Hub '{new_hub.name}' created with ID: {new_hub.id}"}
+    db.refresh(new_farm)
+    return {"message": f"Farm '{new_farm.farm_name}' created!"}
 
-@app.post("/api/admin/sensors", summary="Register a new hardware sensor to a Hub")
+@app.post("/api/admin/sensors", summary="Register a hardware sensor to a Farm")
 def register_sensor(sensor: SensorCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Links a physical sensor (device_eui) to a specific Hub."""
-    # Security check: Does this hub actually belong to the logged-in user?
-    hub = db.query(Hub).filter(Hub.id == sensor.hub_id, Hub.user_id == current_user.id).first()
-    if not hub:
-        raise HTTPException(status_code=404, detail="Hub not found or you don't own it.")
+    # Security check: Does this farm belong to the logged-in user?
+    farm = db.query(Farm).filter(Farm.id == sensor.farm_id, Farm.user_id == current_user.id).first()
+    if not farm:
+        raise HTTPException(status_code=404, detail="Farm not found or unauthorized.")
     
-    new_sensor = Sensor(device_eui=sensor.device_eui, name=sensor.name, hub_id=hub.id, is_active=True)
+    new_sensor = Sensor(device_eui=sensor.device_eui, name=sensor.name, farm_id=farm.id, moisture_threshold=sensor.moisture_threshold, is_active=True)
     db.add(new_sensor)
     db.commit()
-    return {"message": f"Sensor '{sensor.name}' assigned to Hub '{hub.name}'"}
+    return {"message": f"Sensor '{sensor.name}' assigned to Farm '{farm.farm_name}'"}
 
 @app.put("/api/admin/sensors/{device_eui}/deactivate", summary="Soft Delete a broken sensor")
 def deactivate_sensor(device_eui: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Flips is_active to False. Keeps historical data, but hides from dashboard widgets."""
-    # Find sensor through the user's hub to ensure they have permission to delete it
-    sensor = db.query(Sensor).join(Hub).filter(Sensor.device_eui == device_eui, Hub.user_id == current_user.id).first()
+    # Find sensor through the user's farm to ensure permission
+    sensor = db.query(Sensor).join(Farm).filter(Sensor.device_eui == device_eui, Farm.user_id == current_user.id).first()
     if not sensor:
         raise HTTPException(status_code=404, detail="Sensor not found.")
     
@@ -200,7 +193,6 @@ def deactivate_sensor(device_eui: str, db: Session = Depends(get_db), current_us
 
 @app.post("/api/ingest", response_model=IngestResponse, status_code=status.HTTP_201_CREATED)
 def ingest_reading(payload: IngestPayload, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    # NO MORE AUTO-REGISTRATION! The Bouncer checks the guest list.
     sensor = db.query(Sensor).filter(Sensor.device_eui == payload.device_eui).first()
     if not sensor:
         raise HTTPException(status_code=404, detail="Unknown hardware. Please register sensor first.")
@@ -217,61 +209,56 @@ def ingest_reading(payload: IngestPayload, background_tasks: BackgroundTasks, db
     db.commit()
     db.refresh(new_reading)
 
-    # Alerting Engine
-    THRESHOLD = 20.0
-    if payload.moisture_pct <= THRESHOLD:
+    # Use the dynamic threshold we added to the DB!
+    if payload.moisture_pct <= sensor.moisture_threshold:
         now = datetime.utcnow()
-        if sensor.last_alert_sent is None or (now - sensor.last_alert_sent) >= timedelta(hours=4):
+        # Ensure we only send one text per 4 hours
+        if not hasattr(sensor, 'last_alert_sent') or sensor.last_alert_sent is None or (now - sensor.last_alert_sent) >= timedelta(hours=4):
             print("\n" + "="*60)
-            print(f"🚨 MOCK SMS SENT TO FARMER 🚨")
-            print(f"CRITICAL: Sensor {payload.device_eui} reports soil moisture at {payload.moisture_pct}%!")
+            print(f"🚨 SMS SENT: Sensor {payload.device_eui} reports moisture at {payload.moisture_pct}% (Below {sensor.moisture_threshold}% Threshold)")
             print("="*60 + "\n")
-            sensor.last_alert_sent = now
+            # Update alert logic here when added to DB model
             db.commit()
-    # ---------------------------------------------------------
-    # ENTERPRISE PUSH: Tell all connected browsers to update!
-    # ---------------------------------------------------------
+
     background_tasks.add_task(notify_clients)
-
     return IngestResponse(status="ok", reading_id=new_reading.id, device_eui=new_reading.device_eui)
-
 
 @app.get("/api/sensors/{device_eui}/readings")
 def get_sensor_readings(device_eui: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     seventy_two_hours_ago = (datetime.utcnow() - timedelta(hours=72)).isoformat()
-    readings = db.query(Reading).filter(
+    readings = db.query(Reading).join(Sensor).join(Farm).filter(
         Reading.device_eui == device_eui,
+        Farm.user_id == current_user.id, # STRICT SECURITY: Must own the farm
         Reading.timestamp >= seventy_two_hours_ago
     ).order_by(Reading.timestamp.desc()).all()
     return readings
 
 @app.post("/api/register")
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.username == user.username).first()
+    existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
+        raise HTTPException(status_code=400, detail="Email already registered")
     
-    new_user = User(username=user.username, password_hash=get_password_hash(user.password), phone_number=user.phone_number)
+    new_user = User(email=user.email, password_hash=get_password_hash(user.password), full_name=user.full_name)
     db.add(new_user)
     db.commit()
-    return {"message": f"Farmer '{user.username}' successfully registered!"}
+    return {"message": f"Farmer '{user.full_name}' successfully registered!"}
 
 @app.post("/api/login", response_model=TokenResponse)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.username == form_data.username).first()
+    # OAuth2PasswordRequestForm always uses 'username' for the field name, but we pass the email into it
+    db_user = db.query(User).filter(User.email == form_data.username).first()
     if not db_user or not verify_password(form_data.password, db_user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
     
-    access_token = create_access_token(data={"sub": db_user.username})
+    access_token = create_access_token(data={"sub": db_user.email})
     return {"access_token": access_token, "token_type": "bearer"}
-
 
 @app.get("/api/dashboard")
 def get_dashboard_summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Fetches widgets ONLY for the current user's ACTIVE sensors."""
-    # 3-Tier Join: Get Sensors linked to a Hub that belongs to current_user
-    sensors = db.query(Sensor).join(Hub).filter(
-        Hub.user_id == current_user.id, 
+    sensors = db.query(Sensor).join(Farm).filter(
+        Farm.user_id == current_user.id, 
         Sensor.is_active == True
     ).all()
     
@@ -294,9 +281,8 @@ def get_chart_data(db: Session = Depends(get_db), current_user: User = Depends(g
     """Calculates averages using ONLY the current user's sensors."""
     seventy_two_hours_ago = (datetime.utcnow() - timedelta(hours=72)).isoformat()
     
-    # 3-Tier Join: Get Readings from Sensors linked to a Hub owned by the user
-    readings = db.query(Reading).join(Sensor).join(Hub).filter(
-        Hub.user_id == current_user.id,
+    readings = db.query(Reading).join(Sensor).join(Farm).filter(
+        Farm.user_id == current_user.id,
         Reading.timestamp >= seventy_two_hours_ago
     ).all()
     

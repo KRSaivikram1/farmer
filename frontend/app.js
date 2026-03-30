@@ -500,8 +500,9 @@ function renderModalDay(offset) {
     // ==========================================
     // ENTERPRISE COLOR LOGIC FOR MODALS
     // ==========================================
-    const trueAvg = count > 0 ? Math.round(totalMoisture / count) : null;
-    const avgText = trueAvg !== null ? trueAvg + "%" : "--";
+    const hasData = count > 0; // NEW: Explicitly check if we have data
+    const trueAvg = hasData ? Math.round(totalMoisture / count) : null;
+    const avgText = hasData ? trueAvg + "%" : "--";
 
     let themeColor = "emerald";
     let hexColor = "#10b981"; // Emerald Default
@@ -621,27 +622,56 @@ function renderModalDay(offset) {
                 }
             }
         },
-        plugins: [{
-            id: 'verticalLine',
-            afterDraw: (chart) => {
-                if (offset === 0 && chart.scales.x) {
-                    const xCoor = chart.scales.x.getPixelForValue(labels[currentHour]);
-                    context.save();
-                    context.beginPath();
-                    context.setLineDash([5, 5]);
-                    context.moveTo(xCoor, chart.scales.y.top);
-                    context.lineTo(xCoor, chart.scales.y.bottom);
-                    context.lineWidth = 2;
-                    context.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-                    context.stroke();
+        plugins: [
+            // Plugin 1: The "NOW" Line
+            {
+                id: 'verticalLine',
+                afterDraw: (chart) => {
+                    if (offset === 0 && chart.scales.x && hasData) { // Only draw NOW line if there is data
+                        const xCoor = chart.scales.x.getPixelForValue(labels[currentHour]);
+                        context.save();
+                        context.beginPath();
+                        context.setLineDash([5, 5]);
+                        context.moveTo(xCoor, chart.scales.y.top);
+                        context.lineTo(xCoor, chart.scales.y.bottom);
+                        context.lineWidth = 2;
+                        context.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                        context.stroke();
 
-                    context.fillStyle = 'rgba(255, 255, 255, 0.4)';
-                    context.font = 'bold 10px Inter';
-                    context.fillText('NOW', xCoor - 11, chart.scales.y.top + 8);
-                    context.restore();
+                        context.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                        context.font = 'bold 10px Inter';
+                        context.fillText('NOW', xCoor - 11, chart.scales.y.top + 8);
+                        context.restore();
+                    }
+                }
+            },
+            // Plugin 2: NEW! The "No Data" Watermark
+            {
+                id: 'noDataWatermark',
+                afterDraw: (chart) => {
+                    if (!hasData) {
+                        const width = chart.width;
+                        const height = chart.height;
+
+                        context.save();
+                        context.textAlign = 'center';
+                        context.textBaseline = 'middle';
+
+                        // Main Warning Text
+                        context.font = '900 18px Inter';
+                        context.fillStyle = 'rgba(239, 68, 68, 0.5)'; // Faded Red to match the theme
+                        context.fillText('NO DATA RECORDED', width / 2, height / 2);
+
+                        // Subtitle
+                        context.font = 'bold 10px DM Mono';
+                        context.fillStyle = 'rgba(239, 68, 68, 0.3)';
+                        context.fillText('SENSOR OFFLINE OR UNREACHABLE', width / 2, (height / 2) + 22);
+
+                        context.restore();
+                    }
                 }
             }
-        }]
+        ]
     });
 }
 
