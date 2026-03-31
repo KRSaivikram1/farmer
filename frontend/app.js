@@ -138,13 +138,21 @@ function renderWidget(sensor, container) {
     const moisture = sensor.moisture_pct;
     const timestamp = sensor.last_reading_time || sensor.last_seen || null;
 
-    // CHANGED TO ORANGE
-    let themeColor = moisture <= 20 ? "orange" : "emerald";
-    let statusLabel = moisture <= 20 ? "LOW WATER" : "HEALTHY";
+    // 1. Define our themes perfectly so Tailwind always finds the classes
+    const themes = {
+        healthy: { hex: "#10b981", text: "text-emerald-500", border: "border-emerald-500/30", bg: "bg-emerald-500" },
+        warning: { hex: "#f97316", text: "text-orange-500", border: "border-orange-500/30", bg: "bg-orange-500" },
+        offline: { hex: "#475569", text: "text-red-500", border: "border-slate-500/30", bg: "bg-slate-500" }
+    };
 
+    // 2. Default starting state
+    let currentTheme = themes.healthy;
+    let statusLabel = "HEALTHY";
     let timeLabel = "---";
     let heartbeatClass = "text-slate-400";
+    let isOffline = false;
 
+    // 3. THE FIX: Process the timestamp FIRST
     if (timestamp) {
         const lastSeenDate = new Date(timestamp + (timestamp.endsWith('Z') ? '' : 'Z'));
         const diffInMs = new Date() - lastSeenDate;
@@ -153,24 +161,34 @@ function renderWidget(sensor, container) {
 
         timeLabel = diffInHours >= 1 ? `${diffInHours}h ago` : `${diffInMinutes}m ago`;
 
-        // RED REMAINS HERE FOR HARDWARE FAILURE
-        if (diffInHours >= 12) {
-            heartbeatClass = "text-red-500 font-black animate-pulse";
+        // We lowered the threshold to 2 hours to match a realistic farm offline state
+        if (diffInHours >= 2) {
+            isOffline = true;
+            currentTheme = themes.offline;
             statusLabel = "OFFLINE";
-            themeColor = "slate"; // Optional: dim the widget if it's dead
+            heartbeatClass = "text-red-500 font-black animate-pulse";
         }
     }
 
-    // ADDED ORANGE HEX
-    const colorHex = themeColor === 'orange' ? '#f97316' : (themeColor === 'slate' ? '#475569' : '#10b981');
+    // 4. ONLY evaluate moisture if the sensor is actually online
+    if (!isOffline) {
+        if (moisture <= 20) {
+            currentTheme = themes.warning;
+            statusLabel = "LOW WATER";
+        } else {
+            currentTheme = themes.healthy;
+            statusLabel = "HEALTHY";
+        }
+    }
 
+    // 5. Render the HTML safely using the mapped theme classes
     container.innerHTML += `
         <div onclick="openModal('${sensor.device_eui}', '${sensor.name || "Field"}')" 
-             class="custom-card rounded-2xl p-6 transition-all duration-500 cursor-pointer border border-white/5 hover:border-${themeColor}-500/40 relative overflow-hidden">
+             class="custom-card rounded-2xl p-6 transition-all duration-500 cursor-pointer border border-white/5 hover:${currentTheme.border} relative overflow-hidden">
             
             <div class="flex justify-between items-start mb-6">
                 <h4 class="font-syne text-white text-xl uppercase">${sensor.name || "Field"}</h4>
-                <span class="px-2 py-0.5 text-[9px] font-black rounded-sm border border-${themeColor}-500/30 text-${themeColor}-500 tracking-widest uppercase">
+                <span class="px-2 py-0.5 text-[9px] font-black rounded-sm border ${currentTheme.border} ${currentTheme.text} tracking-widest uppercase">
                     ${statusLabel}
                 </span>
             </div>
@@ -183,7 +201,7 @@ function renderWidget(sensor, container) {
             </div>
 
             <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-6">
-                <div class="h-full bg-${themeColor}-500 shadow-[0_0_10px_${colorHex}]" style="width: ${moisture}%"></div>
+                <div class="h-full ${currentTheme.bg} shadow-[0_0_10px_${currentTheme.hex}]" style="width: ${moisture}%"></div>
             </div>
 
             <div class="grid grid-cols-3 pt-4 border-t border-white/5">
@@ -193,7 +211,7 @@ function renderWidget(sensor, container) {
                 </div>
                 <div>
                     <p class="text-[8px] text-slate-600 font-black uppercase font-syne">Battery</p>
-                    <p class="text-xs font-bold text-slate-300 font-mono">${sensor.battery_volts}V</p>
+                    <p class="text-xs font-bold text-slate-300 font-mono">${sensor.battery_volts || 'null'}V</p>
                 </div>
                 <div class="text-right">
                     <p class="text-[8px] text-slate-600 font-black uppercase font-syne">Last Seen</p>
